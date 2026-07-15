@@ -6,6 +6,7 @@ export interface AuthRequest extends Request {
   userId?: string;
   userEmail?: string;
   userRole?: string;
+  workspaceRole?: "ADMIN" | "MEMBER";
 }
 
 export function authenticate(
