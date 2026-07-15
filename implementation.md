@@ -206,3 +206,5 @@
 |------|------|---------|
 | 2026-07-15 | server | feat: initial project scaffolding |
 | 2026-07-15 | client | feat: initial project scaffolding |
+| 2026-07-15 | server | chore: strip business logic, keep bare scaffolding only |
+| 2026-07-15 | client | chore: add logo assets, strip business logic stubs |
