@@ -5,6 +5,8 @@ import { connectMongoDB } from "./config/mongoose";
 import { errorHandler } from "./middleware/errorHandler";
 import authRoutes from "./routes/auth";
 import userRoutes from "./routes/users";
+import workspaceRoutes from "./routes/workspace";
+import invitationRoutes from "./routes/invitation";
 
 const app = express();
 
@@ -19,6 +21,8 @@ app.get("/api/health", (_req, res) => {
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/workspaces", workspaceRoutes);
+app.use("/api/invitations", invitationRoutes);
 
 app.use(errorHandler);
 

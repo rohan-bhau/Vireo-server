@@ -4,5 +4,60 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+}
+
+enum WorkspaceRole {
+  ADMIN
+  MEMBER
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  DECLINED
+  EXPIRED
+}
+
+model Workspace {
+  id          String            @id @default(uuid())
+  name        String
+  description String?
+  ownerId     String
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+
+  members     WorkspaceMember[]
+  invitations Invitation[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  id         String        @id @default(uuid())
+  workspaceId String
+  userId     String
+  role       WorkspaceRole @default(MEMBER)
+  joinedAt   DateTime      @default(now())
+  invitedBy  String?
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@unique([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+model Invitation {
+  id           String            @id @default(uuid())
+  workspaceId  String
+  inviterId    String
+  inviteeEmail String
+  role         WorkspaceRole     @default(MEMBER)
+  token        String            @unique
+  status       InvitationStatus  @default(PENDING)
+  expiresAt    DateTime
+  createdAt    DateTime          @default(now())
+
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+
+  @@map("invitations")
 }
