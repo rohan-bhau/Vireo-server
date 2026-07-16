@@ -8,8 +8,8 @@ export async function create(
   next: NextFunction
 ) {
   try {
-    const { name, description, key } = req.body;
-    const workspaceId = req.params.workspaceId as string;
+    const { name, description, key, workspaceId: bodyWorkspaceId } = req.body;
+    const workspaceId = (req.params.workspaceId || bodyWorkspaceId) as string;
     const project = await projectService.createProject({
       name,
       description,

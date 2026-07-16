@@ -9,7 +9,7 @@ export async function requireWorkspaceMember(
   next: NextFunction
 ) {
   try {
-    const workspaceId = (req.params.workspaceId || req.params.id) as string;
+    const workspaceId = (req.params.workspaceId || req.params.id || req.body.workspaceId) as string;
     if (!workspaceId) {
       throw new AppError("Workspace ID is required", 400);
     }
@@ -36,14 +36,18 @@ export async function requireWorkspaceMember(
 
 export function requireWorkspaceRole(...roles: ("ADMIN" | "MEMBER")[]) {
   return (req: AuthRequest, _res: Response, next: NextFunction) => {
-    if (!req.workspaceRole) {
-      throw new AppError("Workspace role not resolved", 403);
-    }
+    try {
+      if (!req.workspaceRole) {
+        return next(new AppError("Workspace role not resolved", 403));
+      }
 
-    if (!roles.includes(req.workspaceRole)) {
-      throw new AppError("You do not have permission to perform this action", 403);
-    }
+      if (!roles.includes(req.workspaceRole)) {
+        return next(new AppError("You do not have permission to perform this action", 403));
+      }
 
-    next();
+      next();
+    } catch (error) {
+      next(error);
+    }
   };
 }
