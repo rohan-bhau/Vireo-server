@@ -7,6 +7,8 @@ import authRoutes from "./routes/auth";
 import userRoutes from "./routes/users";
 import workspaceRoutes from "./routes/workspace";
 import invitationRoutes from "./routes/invitation";
+import projectRoutes from "./routes/project";
+import boardRoutes from "./routes/board";
 
 const app = express();
 
@@ -23,6 +25,8 @@ app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/workspaces", workspaceRoutes);
 app.use("/api/invitations", invitationRoutes);
+app.use("/api/workspaces/:workspaceId/projects", projectRoutes);
+app.use("/api/boards", boardRoutes);
 
 app.use(errorHandler);
 

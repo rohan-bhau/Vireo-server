@@ -28,6 +28,7 @@ model Workspace {
 
   members     WorkspaceMember[]
   invitations Invitation[]
+  projects    Project[]
 
   @@map("workspaces")
 }
@@ -60,4 +61,48 @@ model Invitation {
   workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
 
   @@map("invitations")
+}
+
+model Project {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  key         String
+  workspaceId String
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  boards    Board[]
+
+  @@unique([workspaceId, key])
+  @@map("projects")
+}
+
+model Board {
+  id        String   @id @default(uuid())
+  name      String
+  projectId String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  columns Column[]
+
+  @@map("boards")
+}
+
+model Column {
+  id        String   @id @default(uuid())
+  name      String
+  position  Int
+  boardId   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  board Board @relation(fields: [boardId], references: [id], onDelete: Cascade)
+
+  @@unique([boardId, position])
+  @@map("columns")
 }
