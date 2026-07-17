@@ -50,7 +50,7 @@
 ---
 
 ## Phase 1: Core Foundation
-> Auth · Workspaces · Projects · Kanban Board · Issues (all types) · Comments · RBAC
+> Auth · Workspaces · Projects · Kanban Board · Tasks (all types) · Comments · RBAC
 
 ### 1.1 Backend — Auth & Users
 - [ ] User model (Mongoose)
@@ -94,15 +94,16 @@
 - [ ] Real-time board sync (Socket.io)
 - [ ] Board filters + swimlanes
 
-### 1.7 Backend — Issues
-- [ ] Issue model (Mongoose — all 5 types)
-- [ ] Issue routes: CRUD, status transitions, linked issues
-- [ ] Activity log model + recording middleware
-- [ ] Attachment upload (Multer + Cloudinary)
+### 1.7 Backend — Tasks
+- [x] Task model (Mongoose — all 5 types: task, bug, epic, story, subtask)
+- [x] Task routes: CRUD, status transitions, linked tasks, board/column moves
+- [x] Activity log model + recording middleware
+- [x] Attachment upload support (URL-based, extensible to Multer + Cloudinary)
+- [x] Real-time socket events: task-moved, task-updated, join/leave task rooms
 
-### 1.8 Frontend — Issues
-- [ ] Issue detail page (`/issue/:issueKey`)
-- [ ] Issue create/edit dialog
+### 1.8 Frontend — Tasks
+- [ ] Task detail page (`/task/:taskKey`)
+- [ ] Task create/edit dialog
 - [ ] Rich-text description editor
 - [ ] Comment thread (create, edit, delete)
 - [ ] Activity log display
@@ -127,7 +128,7 @@
 ### 2.2 Frontend — Sprints & Epics
 - [ ] Backlog page (`/p/:projectId/backlog`)
 - [ ] Create sprint dialog
-- [ ] Sprint planning (drag issues, capacity bar)
+- [ ] Sprint planning (drag tasks, capacity bar)
 - [ ] Scrum board (`/p/:projectId/sprint/:sprintId`)
 - [ ] Epic color-coded sidebar
 
@@ -151,7 +152,7 @@
 - [ ] Workflow editor in project settings
 - [ ] Advanced filter builder UI
 - [ ] Saved filters sidebar
-- [ ] All-issues table view (`/p/:projectId/issues`)
+- [ ] All-tasks table view (`/p/:projectId/tasks`)
 - [ ] Global search (`/search`)
 
 ---
@@ -167,7 +168,7 @@
 - [ ] AI smart triage (labels, assignee suggestions)
 - [ ] AI sprint planner
 - [ ] AI chat assistant panel (`/ai-assistant`)
-- [ ] Contextual AI launcher on issue/board pages
+- [ ] Contextual AI launcher on task/board pages
 
 ---
 
