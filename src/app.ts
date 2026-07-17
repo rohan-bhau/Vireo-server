@@ -19,6 +19,7 @@ import workflowRoutes from "./routes/workflow";
 import automationRoutes from "./routes/automation";
 import searchRoutes from "./routes/search";
 import savedFilterRoutes from "./routes/savedFilter";
+import aiRoutes from "./routes/ai";
 import { createSocketServer } from "./socket";
 
 const app = express();
@@ -50,6 +51,7 @@ app.use("/api/workflows", workflowRoutes);
 app.use("/api/automation", automationRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/filters", savedFilterRoutes);
+app.use("/api/ai", aiRoutes);
 
 app.use(errorHandler);
 
