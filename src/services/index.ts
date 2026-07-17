@@ -6,3 +6,4 @@ export * from "./board";
 export * from "./task";
 export * from "./sprint";
 export * from "./epic";
+export * from "./ai";
