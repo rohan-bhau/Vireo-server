@@ -1,6 +1,8 @@
 import Comment from "../models/mongoose/Comment";
 import ActivityLog from "../models/mongoose/ActivityLog";
+import Task from "../models/mongoose/Task";
 import { AppError } from "../utils/AppError";
+import { notifyMentioned } from "./notification";
 
 export async function getTaskComments(taskKey: string) {
   return Comment.find({ taskId: taskKey }).sort({ createdAt: -1 });
@@ -25,6 +27,11 @@ export async function createComment(
     newValue: content.substring(0, 100),
     timestamp: new Date(),
   });
+
+  const task = await Task.findOne({ taskKey });
+  if (task) {
+    await notifyMentioned(taskKey, task.title, content, authorId);
+  }
 
   return comment;
 }

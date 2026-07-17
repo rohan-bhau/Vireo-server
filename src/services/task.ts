@@ -2,6 +2,7 @@ import { prisma } from "../config/prisma";
 import Task, { TaskStatus, TaskPriority, TaskType } from "../models/mongoose/Task";
 import ActivityLog from "../models/mongoose/ActivityLog";
 import { AppError } from "../utils/AppError";
+import { notifyAssigned, notifyStatusChanged } from "./notification";
 
 interface CreateTaskInput {
   title: string;
@@ -154,6 +155,9 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
 
   const changes: { field: string; oldValue: string; newValue: string }[] = [];
 
+  const oldAssignee = task.assignee;
+  const oldStatus = task.status;
+
   if (input.title !== undefined && input.title !== task.title) {
     changes.push({ field: "title", oldValue: task.title, newValue: input.title });
   }
@@ -168,6 +172,13 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
   }
   if (input.columnId !== undefined && input.columnId !== task.columnId) {
     changes.push({ field: "column", oldValue: task.columnId || "none", newValue: input.columnId || "none" });
+  }
+
+  if (input.assignee !== undefined && input.assignee !== oldAssignee && input.assignee) {
+    await notifyAssigned(taskKey, task.title, input.assignee, actorId);
+  }
+  if (input.status !== undefined && input.status !== oldStatus) {
+    await notifyStatusChanged(taskKey, task.title, input.status, task.assignee, actorId);
   }
 
   if (input.title !== undefined) task.title = input.title;
