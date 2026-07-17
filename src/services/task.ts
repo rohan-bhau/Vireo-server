@@ -11,7 +11,7 @@ interface CreateTaskInput {
   priority?: TaskPriority;
   assignee?: string;
   reporter: string;
-  projectId: string;
+  projectId?: string;
   boardId?: string;
   columnId?: string;
   labels?: string[];
@@ -19,6 +19,33 @@ interface CreateTaskInput {
   storyPoints?: number;
   parentTask?: string;
   workspaceId: string;
+}
+
+async function resolveOrCreateDefaultProject(workspaceId: string): Promise<{ id: string; key: string }> {
+  const existing = await prisma.project.findFirst({
+    where: { workspaceId, name: "Default" },
+  });
+  if (existing) return { id: existing.id, key: existing.key };
+
+  const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+  if (!workspace) throw new AppError("Workspace not found", 404);
+
+  const prefix = workspace.name
+    .replace(/[^a-zA-Z0-9]/g, "")
+    .substring(0, 3)
+    .toUpperCase() || "DEF";
+
+  const project = await prisma.project.create({
+    data: {
+      name: "Default",
+      key: prefix,
+      description: "Auto-created default project",
+      workspaceId,
+      ownerId: "",
+    },
+  });
+
+  return { id: project.id, key: project.key };
 }
 
 export async function generateTaskKey(projectId: string): Promise<string> {
@@ -38,10 +65,16 @@ export async function generateTaskKey(projectId: string): Promise<string> {
 }
 
 export async function createTask(input: CreateTaskInput) {
-  const project = await prisma.project.findUnique({ where: { id: input.projectId } });
+  let projectId = input.projectId;
+  if (!projectId) {
+    const defaultProject = await resolveOrCreateDefaultProject(input.workspaceId);
+    projectId = defaultProject.id;
+  }
+
+  const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) throw new AppError("Project not found", 404);
 
-  const taskKey = await generateTaskKey(input.projectId);
+  const taskKey = await generateTaskKey(projectId);
 
   const maxPosition = input.columnId
     ? await Task.countDocuments({ columnId: input.columnId })
@@ -56,7 +89,7 @@ export async function createTask(input: CreateTaskInput) {
     priority: input.priority || "medium",
     assignee: input.assignee || null,
     reporter: input.reporter,
-    projectId: input.projectId,
+    projectId,
     boardId: input.boardId || null,
     columnId: input.columnId || null,
     position: maxPosition,
