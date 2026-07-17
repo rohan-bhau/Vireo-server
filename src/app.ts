@@ -15,6 +15,10 @@ import taskRoutes from "./routes/task";
 import notificationRoutes from "./routes/notification";
 import sprintRoutes from "./routes/sprint";
 import epicRoutes from "./routes/epic";
+import workflowRoutes from "./routes/workflow";
+import automationRoutes from "./routes/automation";
+import searchRoutes from "./routes/search";
+import savedFilterRoutes from "./routes/savedFilter";
 import { createSocketServer } from "./socket";
 
 const app = express();
@@ -42,6 +46,10 @@ app.use("/api/tasks", taskRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/sprints", sprintRoutes);
 app.use("/api/epics", epicRoutes);
+app.use("/api/workflows", workflowRoutes);
+app.use("/api/automation", automationRoutes);
+app.use("/api/search", searchRoutes);
+app.use("/api/filters", savedFilterRoutes);
 
 app.use(errorHandler);
 
