@@ -53,6 +53,7 @@ model Invitation {
   inviterId    String
   inviteeEmail String
   role         WorkspaceRole     @default(MEMBER)
+  message      String?
   token        String            @unique
   status       InvitationStatus  @default(PENDING)
   expiresAt    DateTime

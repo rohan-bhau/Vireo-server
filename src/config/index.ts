@@ -12,5 +12,12 @@ export const config = {
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
   },
+  smtp: {
+    host: process.env.SMTP_HOST || "",
+    port: parseInt(process.env.SMTP_PORT || "587", 10),
+    user: process.env.SMTP_USER || "",
+    pass: process.env.SMTP_PASS || "",
+  },
+  emailFrom: process.env.EMAIL_FROM || "noreply@vireo.app",
   clientUrl: process.env.CLIENT_URL || "http://localhost:3000",
 };

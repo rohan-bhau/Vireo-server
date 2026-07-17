@@ -8,13 +8,14 @@ export async function create(
   next: NextFunction
 ) {
   try {
-    const { inviteeEmail, role } = req.body;
+    const { inviteeEmail, role, message } = req.body;
     const workspaceId = req.params.workspaceId as string;
     const invitation = await invitationService.createInvitation({
       workspaceId,
       inviterId: req.userId!,
       inviteeEmail,
       role: role || "MEMBER",
+      message,
     });
     res.status(201).json({ status: "success", data: { invitation } });
   } catch (error) {
@@ -90,6 +91,20 @@ export async function getMyInvitations(
       req.userEmail!
     );
     res.status(200).json({ status: "success", data: { invitations } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function resend(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const invitationId = req.params.invitationId as string;
+    await invitationService.resendInvitation(invitationId, req.userId!);
+    res.status(200).json({ status: "success", message: "Invitation email resent" });
   } catch (error) {
     next(error);
   }

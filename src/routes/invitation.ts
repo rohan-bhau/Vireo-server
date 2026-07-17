@@ -7,6 +7,7 @@ const router = Router();
 router.use(authenticate);
 
 router.get("/my", invitationController.getMyInvitations);
+router.post("/resend/:invitationId", invitationController.resend);
 router.post("/:token/accept", invitationController.accept);
 router.post("/:token/decline", invitationController.decline);
 
