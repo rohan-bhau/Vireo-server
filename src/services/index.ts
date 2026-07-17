@@ -4,3 +4,5 @@ export * from "./invitation";
 export * from "./project";
 export * from "./board";
 export * from "./task";
+export * from "./sprint";
+export * from "./epic";

@@ -6,6 +6,12 @@ datasource db {
   provider = "postgresql"
 }
 
+enum SprintStatus {
+  PLANNING
+  ACTIVE
+  COMPLETED
+}
+
 enum WorkspaceRole {
   ADMIN
   MEMBER
@@ -76,6 +82,7 @@ model Project {
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   boards    Board[]
+  sprints   Sprint[]
 
   @@unique([workspaceId, key])
   @@map("projects")
@@ -106,4 +113,20 @@ model Column {
 
   @@unique([boardId, position])
   @@map("columns")
+}
+
+model Sprint {
+  id        String        @id @default(uuid())
+  name      String
+  goal      String?
+  projectId String
+  status    SprintStatus  @default(PLANNING)
+  startDate DateTime?
+  endDate   DateTime?
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@map("sprints")
 }

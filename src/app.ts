@@ -13,6 +13,8 @@ import projectsRoutes from "./routes/projects";
 import boardRoutes from "./routes/board";
 import taskRoutes from "./routes/task";
 import notificationRoutes from "./routes/notification";
+import sprintRoutes from "./routes/sprint";
+import epicRoutes from "./routes/epic";
 import { createSocketServer } from "./socket";
 
 const app = express();
@@ -38,6 +40,8 @@ app.use("/api/projects", projectsRoutes);
 app.use("/api/boards", boardRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api/notifications", notificationRoutes);
+app.use("/api/sprints", sprintRoutes);
+app.use("/api/epics", epicRoutes);
 
 app.use(errorHandler);
 
