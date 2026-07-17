@@ -1,12 +1,15 @@
 import { v4 as uuidv4 } from "uuid";
 import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
+import User from "../models/mongoose/User";
+import { sendInvitationEmail, sendWelcomeEmail } from "./email";
 
 interface CreateInvitationInput {
   workspaceId: string;
   inviterId: string;
   inviteeEmail: string;
   role: "ADMIN" | "MEMBER";
+  message?: string;
 }
 
 export async function createInvitation(input: CreateInvitationInput) {
@@ -50,12 +53,59 @@ export async function createInvitation(input: CreateInvitationInput) {
       inviterId: input.inviterId,
       inviteeEmail: input.inviteeEmail,
       role: input.role,
+      message: input.message,
       token,
       expiresAt,
     },
   });
 
+  try {
+    const inviter = await User.findById(input.inviterId).select("name");
+    const inviterName = inviter?.name || "A team member";
+
+    await sendInvitationEmail(
+      input.inviteeEmail,
+      workspace.name,
+      inviterName,
+      token,
+      input.message
+    );
+  } catch (error) {
+    console.error("Failed to send invitation email:", error);
+  }
+
   return invitation;
+}
+
+export async function resendInvitation(invitationId: string, inviterId: string) {
+  const invitation = await prisma.invitation.findUnique({
+    where: { id: invitationId },
+    include: { workspace: true },
+  });
+
+  if (!invitation) {
+    throw new AppError("Invitation not found", 404);
+  }
+
+  if (invitation.status !== "PENDING") {
+    throw new AppError("Invitation is no longer pending", 400);
+  }
+
+  const inviter = await User.findById(inviterId).select("name");
+  const inviterName = inviter?.name || "A team member";
+
+  try {
+    await sendInvitationEmail(
+      invitation.inviteeEmail,
+      invitation.workspace.name,
+      inviterName,
+      invitation.token,
+      invitation.message || undefined
+    );
+  } catch (error) {
+    console.error("Failed to resend invitation email:", error);
+    throw new AppError("Failed to send invitation email", 500);
+  }
 }
 
 export async function getWorkspaceInvitations(workspaceId: string) {
