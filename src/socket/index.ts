@@ -31,12 +31,24 @@ export function createSocketServer(httpServer: HTTPServer) {
       socket.leave(`board:${boardId}`);
     });
 
-    socket.on("issue-moved", (data: { boardId: string; issueId: string; fromColumnId: string; toColumnId: string; position: number }) => {
-      socket.to(`board:${data.boardId}`).emit("issue-moved", data);
+    socket.on("task-moved", (data: { boardId: string; taskKey: string; fromColumnId: string; toColumnId: string; position: number }) => {
+      socket.to(`board:${data.boardId}`).emit("task-moved", data);
+    });
+
+    socket.on("task-updated", (data: { boardId: string; taskKey: string }) => {
+      socket.to(`board:${data.boardId}`).emit("task-updated", data);
     });
 
     socket.on("board-updated", (boardId: string) => {
       socket.to(`board:${boardId}`).emit("board-updated", boardId);
+    });
+
+    socket.on("join-task", (taskKey: string) => {
+      socket.join(`task:${taskKey}`);
+    });
+
+    socket.on("leave-task", (taskKey: string) => {
+      socket.leave(`task:${taskKey}`);
     });
   });
 

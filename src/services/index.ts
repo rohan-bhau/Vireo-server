@@ -1,3 +1,6 @@
 export * from "./auth";
 export * from "./workspace";
 export * from "./invitation";
+export * from "./project";
+export * from "./board";
+export * from "./task";

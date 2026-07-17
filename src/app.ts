@@ -11,6 +11,7 @@ import invitationRoutes from "./routes/invitation";
 import projectRoutes from "./routes/project";
 import projectsRoutes from "./routes/projects";
 import boardRoutes from "./routes/board";
+import taskRoutes from "./routes/task";
 import { createSocketServer } from "./socket";
 
 const app = express();
@@ -34,6 +35,7 @@ app.use("/api/invitations", invitationRoutes);
 app.use("/api/workspaces/:workspaceId/projects", projectRoutes);
 app.use("/api/projects", projectsRoutes);
 app.use("/api/boards", boardRoutes);
+app.use("/api/tasks", taskRoutes);
 
 app.use(errorHandler);
 
