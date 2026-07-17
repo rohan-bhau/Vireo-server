@@ -3,6 +3,7 @@ import Task, { TaskStatus, TaskPriority, TaskType } from "../models/mongoose/Tas
 import ActivityLog from "../models/mongoose/ActivityLog";
 import { AppError } from "../utils/AppError";
 import { notifyAssigned, notifyStatusChanged } from "./notification";
+import { evaluateTriggers } from "./automation";
 
 interface CreateTaskInput {
   title: string;
@@ -108,6 +109,14 @@ export async function createTask(input: CreateTaskInput) {
     timestamp: new Date(),
   });
 
+  evaluateTriggers("task.created", {
+    taskKey: task.taskKey,
+    task,
+    workspaceId: input.workspaceId,
+    projectId,
+    actorId: input.reporter,
+  });
+
   return task;
 }
 
@@ -210,6 +219,34 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
       oldValue: change.oldValue,
       newValue: change.newValue,
       timestamp: new Date(),
+    });
+  }
+
+  evaluateTriggers("task.updated", {
+    taskKey,
+    task: updated,
+    workspaceId: task.workspaceId,
+    projectId: task.projectId,
+    actorId,
+  });
+
+  if (input.status && input.status !== oldStatus) {
+    evaluateTriggers("task.status_changed", {
+      taskKey,
+      task: updated,
+      workspaceId: task.workspaceId,
+      projectId: task.projectId,
+      actorId,
+    });
+  }
+
+  if (input.assignee !== undefined && input.assignee !== oldAssignee) {
+    evaluateTriggers("task.assigned", {
+      taskKey,
+      task: updated,
+      workspaceId: task.workspaceId,
+      projectId: task.projectId,
+      actorId,
     });
   }
 
