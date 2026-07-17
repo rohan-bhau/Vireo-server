@@ -218,12 +218,11 @@ export async function moveTask(taskKey: string, columnId: string, position: numb
   if (!task) throw new AppError("Task not found", 404);
 
   const column = await prisma.column.findUnique({ where: { id: columnId } });
-  if (!column) throw new AppError("Column not found", 404);
 
   const oldColumnId = task.columnId;
   task.columnId = columnId;
   task.position = position;
-  task.status = mapColumnToStatus(column.name);
+  task.status = column ? mapColumnToStatus(column.name) : mapColumnToStatus(columnId);
   await task.save();
 
   if (oldColumnId !== columnId) {
