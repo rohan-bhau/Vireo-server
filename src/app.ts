@@ -20,6 +20,9 @@ import automationRoutes from "./routes/automation";
 import searchRoutes from "./routes/search";
 import savedFilterRoutes from "./routes/savedFilter";
 import aiRoutes from "./routes/ai";
+import auditLogRoutes from "./routes/auditLog";
+import integrationRoutes from "./routes/integration";
+import dashboardRoutes from "./routes/dashboard";
 import { createSocketServer } from "./socket";
 
 const app = express();
@@ -52,6 +55,9 @@ app.use("/api/automation", automationRoutes);
 app.use("/api/search", searchRoutes);
 app.use("/api/filters", savedFilterRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/audit-logs", auditLogRoutes);
+app.use("/api/integrations", integrationRoutes);
+app.use("/api/dashboard", dashboardRoutes);
 
 app.use(errorHandler);
 
