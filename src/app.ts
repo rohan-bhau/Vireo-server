@@ -23,17 +23,24 @@ import aiRoutes from "./routes/ai";
 import auditLogRoutes from "./routes/auditLog";
 import integrationRoutes from "./routes/integration";
 import dashboardRoutes from "./routes/dashboard";
+import conversationRoutes from "./routes/conversation";
+import callRoutes from "./routes/calls";
+import billingRoutes from "./routes/billing";
+import webhookRoutes from "./routes/webhook";
 import { createSocketServer } from "./socket";
 
 const app = express();
 const httpServer = createServer(app);
 
 app.use(cors({ origin: config.clientUrl, credentials: true }));
-app.use(express.json());
 
 connectMongoDB();
 
 createSocketServer(httpServer);
+
+app.use("/api/webhooks", webhookRoutes);
+
+app.use(express.json());
 
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
@@ -58,6 +65,9 @@ app.use("/api/ai", aiRoutes);
 app.use("/api/audit-logs", auditLogRoutes);
 app.use("/api/integrations", integrationRoutes);
 app.use("/api/dashboard", dashboardRoutes);
+app.use("/api/conversations", conversationRoutes);
+app.use("/api/calls", callRoutes);
+app.use("/api/billing", billingRoutes);
 
 app.use(errorHandler);
 

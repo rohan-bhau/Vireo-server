@@ -25,4 +25,11 @@ export const config = {
     apiUrl: process.env.LLM_API_URL || "https://api.openai.com/v1",
     model: process.env.LLM_MODEL || "gpt-4o-mini",
   },
+  stripe: {
+    secretKey: process.env.STRIPE_SECRET_KEY || "",
+    publishableKey: process.env.STRIPE_PUBLISHABLE_KEY || "",
+    webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
+    proPriceId: process.env.STRIPE_PRO_PRICE_ID || "",
+    enterprisePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "",
+  },
 };
