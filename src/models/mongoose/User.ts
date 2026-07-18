@@ -8,6 +8,7 @@ export interface IUser extends Document {
   avatar?: string;
   role: "user" | "admin";
   refreshToken?: string;
+  stripeCustomerId?: string;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -48,6 +49,9 @@ const userSchema = new Schema<IUser>(
     refreshToken: {
       type: String,
       select: false,
+    },
+    stripeCustomerId: {
+      type: String,
     },
   },
   { timestamps: true }

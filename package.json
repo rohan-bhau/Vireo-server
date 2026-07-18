@@ -31,6 +31,7 @@
     "openai": "^6.48.0",
     "pg": "^8.22.0",
     "socket.io": "^4.8.3",
+    "stripe": "^22.3.2",
     "uuid": "^14.0.1"
   },
   "devDependencies": {
