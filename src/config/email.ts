@@ -15,6 +15,7 @@ export function getTransporter(): nodemailer.Transporter {
         user: config.smtp.user,
         pass: config.smtp.pass,
       },
+      requireTLS: true,
     });
   } else {
     transporter = nodemailer.createTransport({

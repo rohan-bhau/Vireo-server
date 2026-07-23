@@ -69,3 +69,20 @@ export async function sendWelcomeEmail(to: string, name: string) {
     html,
   });
 }
+
+export async function sendOtpEmail(to: string, name: string, otp: string) {
+  const template = loadTemplate("otp-email.html");
+  const html = compile(template, {
+    otp,
+    email: to,
+    name,
+  });
+
+  const transporter = getTransporter();
+  await transporter.sendMail({
+    from: sender,
+    to,
+    subject: "Your Vireo verification code",
+    html,
+  });
+}

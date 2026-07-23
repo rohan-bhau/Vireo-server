@@ -70,15 +70,33 @@ model Invitation {
   @@map("invitations")
 }
 
+enum ProjectTemplate {
+  SCRUM
+  KANBAN
+  BUG_TRACKING
+  PROJECT_MANAGEMENT
+  DEVOPS
+  TASK_TRACKING
+  BLANK
+}
+
+enum BoardType {
+  SCRUM
+  KANBAN
+}
+
 model Project {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  key         String
-  workspaceId String
-  ownerId     String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id            String          @id @default(uuid())
+  name          String
+  description   String?
+  key           String
+  workspaceId   String
+  ownerId       String
+  template      ProjectTemplate @default(SCRUM)
+  avatar        String?
+  isTeamManaged Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   boards    Board[]
@@ -89,11 +107,12 @@ model Project {
 }
 
 model Board {
-  id        String   @id @default(uuid())
+  id        String    @id @default(uuid())
   name      String
+  type      BoardType @default(SCRUM)
   projectId String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
   project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   columns Column[]
