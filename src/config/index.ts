@@ -9,7 +9,7 @@ export const config = {
   jwt: {
     accessSecret: process.env.JWT_ACCESS_SECRET || "access-secret",
     refreshSecret: process.env.JWT_REFRESH_SECRET || "refresh-secret",
-    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15m",
+    accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || "15d",
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
   },
   smtp: {
@@ -31,5 +31,11 @@ export const config = {
     webhookSecret: process.env.STRIPE_WEBHOOK_SECRET || "",
     proPriceId: process.env.STRIPE_PRO_PRICE_ID || "",
     enterprisePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "",
+  },
+  oauth: {
+    googleClientId: process.env.GOOGLE_CLIENT_ID || "",
+    googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
+    githubClientId: process.env.GITHUB_CLIENT_ID || "",
+    githubClientSecret: process.env.GITHUB_CLIENT_SECRET || "",
   },
 };

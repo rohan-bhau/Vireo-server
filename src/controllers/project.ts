@@ -8,12 +8,15 @@ export async function create(
   next: NextFunction
 ) {
   try {
-    const { name, description, key, workspaceId: bodyWorkspaceId } = req.body;
+    const { name, description, key, template, avatar, isTeamManaged, workspaceId: bodyWorkspaceId } = req.body;
     const workspaceId = (req.params.workspaceId || bodyWorkspaceId) as string;
     const project = await projectService.createProject({
       name,
       description,
       key,
+      template,
+      avatar,
+      isTeamManaged,
       workspaceId,
       ownerId: req.userId!,
     });
@@ -58,11 +61,13 @@ export async function update(
 ) {
   try {
     const projectId = req.params.projectId as string;
-    const { name, description, key } = req.body;
+    const { name, description, key, avatar, isTeamManaged } = req.body;
     const project = await projectService.updateProject(projectId, {
       name,
       description,
       key,
+      avatar,
+      isTeamManaged,
     });
     res.status(200).json({ status: "success", data: { project } });
   } catch (error) {

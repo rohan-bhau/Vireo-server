@@ -9,6 +9,9 @@ export interface IUser extends Document {
   role: "user" | "admin";
   refreshToken?: string;
   stripeCustomerId?: string;
+  emailOtp?: string;
+  emailOtpExpires?: Date;
+  isEmailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -52,6 +55,16 @@ const userSchema = new Schema<IUser>(
     },
     stripeCustomerId: {
       type: String,
+    },
+    emailOtp: {
+      type: String,
+    },
+    emailOtpExpires: {
+      type: Date,
+    },
+    isEmailVerified: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
