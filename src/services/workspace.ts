@@ -1,5 +1,7 @@
+import mongoose from "mongoose";
 import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
+import User from "../models/mongoose/User";
 
 interface CreateWorkspaceInput {
   name: string;
@@ -84,7 +86,22 @@ export async function getWorkspaceMembers(workspaceId: string) {
     where: { workspaceId },
   });
 
-  return members;
+  const userIds = members.map((m) => new mongoose.Types.ObjectId(m.userId));
+  const users = await User.find({
+    _id: { $in: userIds },
+  }).select("name email avatar");
+
+  const userMap = new Map(users.map((u: any) => [u._id.toString(), u]));
+
+  return members.map((m) => ({
+    id: m.id,
+    workspaceId: m.workspaceId,
+    userId: m.userId,
+    role: m.role,
+    joinedAt: m.joinedAt,
+    invitedBy: m.invitedBy,
+    user: userMap.get(m.userId) || null,
+  }));
 }
 
 export async function removeMember(workspaceId: string, userId: string) {

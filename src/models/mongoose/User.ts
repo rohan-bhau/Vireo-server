@@ -11,6 +11,8 @@ export interface IUser extends Document {
   stripeCustomerId?: string;
   emailOtp?: string;
   emailOtpExpires?: Date;
+  resetPasswordToken?: string;
+  resetPasswordExpires?: Date;
   isEmailVerified: boolean;
   createdAt: Date;
   updatedAt: Date;
@@ -60,6 +62,12 @@ const userSchema = new Schema<IUser>(
       type: String,
     },
     emailOtpExpires: {
+      type: Date,
+    },
+    resetPasswordToken: {
+      type: String,
+    },
+    resetPasswordExpires: {
       type: Date,
     },
     isEmailVerified: {

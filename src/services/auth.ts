@@ -3,7 +3,7 @@ import User, { IUser } from "../models/mongoose/User";
 import { AppError } from "../utils/AppError";
 import { generateAccessToken, generateRefreshToken, verifyRefreshToken } from "../utils/token";
 import { config } from "../config";
-import { sendOtpEmail, sendWelcomeEmail } from "./email";
+import { sendOtpEmail, sendWelcomeEmail, sendPasswordResetEmail } from "./email";
 import * as workspaceService from "./workspace";
 
 function generateOtp(): string {
@@ -336,18 +336,13 @@ export async function requestPasswordReset(email: string) {
     .update(resetToken)
     .digest("hex");
 
-  user.set("resetPasswordToken", resetTokenHash);
-  user.set("resetPasswordExpires", new Date(Date.now() + 3600000));
-
-  const userAny = user as any;
-  userAny.resetPasswordToken = resetTokenHash;
-  userAny.resetPasswordExpires = new Date(Date.now() + 3600000);
+  user.resetPasswordToken = resetTokenHash;
+  user.resetPasswordExpires = new Date(Date.now() + 3600000);
   await user.save();
 
-  return {
-    message: "If this email exists, a reset link has been sent.",
-    resetToken,
-  };
+  await sendPasswordResetEmail(user.email, user.name, resetToken);
+
+  return { message: "If this email exists, a reset link has been sent." };
 }
 
 export async function resetPassword(token: string, newPassword: string) {
@@ -363,10 +358,9 @@ export async function resetPassword(token: string, newPassword: string) {
   }
 
   user.password = newPassword;
-  const userAny = user as any;
-  userAny.resetPasswordToken = undefined;
-  userAny.resetPasswordExpires = undefined;
-  (user as any).refreshToken = null;
+  user.resetPasswordToken = undefined;
+  user.resetPasswordExpires = undefined;
+  user.refreshToken = null as any;
   await user.save();
 
   return { message: "Password has been reset successfully" };

@@ -70,6 +70,25 @@ export async function sendWelcomeEmail(to: string, name: string) {
   });
 }
 
+export async function sendPasswordResetEmail(to: string, name: string, resetToken: string) {
+  const resetUrl = `${config.clientUrl}/reset-password?token=${resetToken}`;
+
+  const template = loadTemplate("reset-password-email.html");
+  const html = compile(template, {
+    name,
+    email: to,
+    resetUrl,
+  });
+
+  const transporter = getTransporter();
+  await transporter.sendMail({
+    from: sender,
+    to,
+    subject: "Reset your Vireo password",
+    html,
+  });
+}
+
 export async function sendOtpEmail(to: string, name: string, otp: string) {
   const template = loadTemplate("otp-email.html");
   const html = compile(template, {
