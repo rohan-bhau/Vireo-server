@@ -49,16 +49,39 @@ export async function createBoard(projectId: string, name: string) {
   return board;
 }
 
-export async function updateBoard(boardId: string, name: string) {
+export async function updateBoard(boardId: string, name?: string, config?: any) {
   const board = await prisma.board.findUnique({ where: { id: boardId } });
 
   if (!board) {
     throw new AppError("Board not found", 404);
   }
 
+  const data: any = {};
+  if (name !== undefined) data.name = name;
+  if (config !== undefined) data.config = config;
+
   const updated = await prisma.board.update({
     where: { id: boardId },
-    data: { name },
+    data,
+    include: { columns: { orderBy: { position: "asc" } } },
+  });
+
+  return updated;
+}
+
+export async function updateBoardConfig(boardId: string, config: any) {
+  const board = await prisma.board.findUnique({ where: { id: boardId } });
+
+  if (!board) {
+    throw new AppError("Board not found", 404);
+  }
+
+  const existing = (board as any).config || {};
+  const merged = { ...(typeof existing === "object" ? existing : {}), ...config };
+
+  const updated = await prisma.board.update({
+    where: { id: boardId },
+    data: { config: merged },
     include: { columns: { orderBy: { position: "asc" } } },
   });
 
@@ -78,7 +101,8 @@ export async function deleteBoard(boardId: string) {
 export async function addColumn(
   boardId: string,
   name: string,
-  position?: number
+  position?: number,
+  wipLimit?: number
 ) {
   const board = await prisma.board.findUnique({
     where: { id: boardId },
@@ -92,7 +116,7 @@ export async function addColumn(
   const nextPosition = position ?? board.columns.length;
 
   const column = await prisma.column.create({
-    data: { name, position: nextPosition, boardId },
+    data: { name, position: nextPosition, boardId, wipLimit },
   });
 
   return column;
@@ -100,7 +124,7 @@ export async function addColumn(
 
 export async function updateColumn(
   columnId: string,
-  data: { name?: string; position?: number }
+  data: { name?: string; position?: number; wipLimit?: number | null }
 ) {
   const column = await prisma.column.findUnique({ where: { id: columnId } });
 
@@ -108,12 +132,14 @@ export async function updateColumn(
     throw new AppError("Column not found", 404);
   }
 
+  const updateData: any = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.position !== undefined) updateData.position = data.position;
+  if (data.wipLimit !== undefined) updateData.wipLimit = data.wipLimit;
+
   const updated = await prisma.column.update({
     where: { id: columnId },
-    data: {
-      ...(data.name && { name: data.name }),
-      ...(data.position !== undefined && { position: data.position }),
-    },
+    data: updateData,
   });
 
   return updated;
