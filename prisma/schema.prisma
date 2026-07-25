@@ -111,6 +111,7 @@ model Board {
   name      String
   type      BoardType @default(SCRUM)
   projectId String
+  config    Json?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 
@@ -125,6 +126,7 @@ model Column {
   name      String
   position  Int
   boardId   String
+  wipLimit  Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

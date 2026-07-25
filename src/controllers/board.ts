@@ -52,8 +52,23 @@ export async function update(
 ) {
   try {
     const boardId = req.params.boardId as string;
-    const { name } = req.body;
-    const board = await boardService.updateBoard(boardId, name);
+    const { name, config } = req.body;
+    const board = await boardService.updateBoard(boardId, name, config);
+    res.status(200).json({ status: "success", data: { board } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateConfig(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const boardId = req.params.boardId as string;
+    const { config } = req.body;
+    const board = await boardService.updateBoardConfig(boardId, config);
     res.status(200).json({ status: "success", data: { board } });
   } catch (error) {
     next(error);
@@ -81,8 +96,8 @@ export async function addColumn(
 ) {
   try {
     const boardId = req.params.boardId as string;
-    const { name, position } = req.body;
-    const column = await boardService.addColumn(boardId, name, position);
+    const { name, position, wipLimit } = req.body;
+    const column = await boardService.addColumn(boardId, name, position, wipLimit);
     res.status(201).json({ status: "success", data: { column } });
   } catch (error) {
     next(error);
@@ -96,8 +111,8 @@ export async function updateColumn(
 ) {
   try {
     const columnId = req.params.columnId as string;
-    const { name, position } = req.body;
-    const column = await boardService.updateColumn(columnId, { name, position });
+    const { name, position, wipLimit } = req.body;
+    const column = await boardService.updateColumn(columnId, { name, position, wipLimit });
     res.status(200).json({ status: "success", data: { column } });
   } catch (error) {
     next(error);

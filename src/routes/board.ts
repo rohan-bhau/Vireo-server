@@ -11,6 +11,7 @@ router.use(authenticate);
 router.get("/:boardId", requireBoardMember, boardController.getById);
 router.put("/:boardId", requireBoardMember, requireWorkspaceRole("ADMIN"), boardController.update);
 router.delete("/:boardId", requireBoardMember, requireWorkspaceRole("ADMIN"), boardController.remove);
+router.put("/:boardId/config", requireBoardMember, requireWorkspaceRole("ADMIN"), boardController.updateConfig);
 
 router.post("/:boardId/columns", requireBoardMember, requireWorkspaceRole("ADMIN"), boardController.addColumn);
 router.put("/:boardId/columns/:columnId", requireBoardMember, requireWorkspaceRole("ADMIN"), boardController.updateColumn);
