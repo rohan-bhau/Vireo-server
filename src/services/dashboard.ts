@@ -1,5 +1,6 @@
 import Task from "../models/mongoose/Task";
 import AuditLog from "../models/mongoose/AuditLog";
+import Dashboard from "../models/mongoose/Dashboard";
 import { prisma } from "../config/prisma";
 
 export async function getDashboardStats(workspaceId: string) {
@@ -122,4 +123,135 @@ export async function getTeamWorkload(workspaceId: string) {
     userId,
     ...counts,
   }));
+}
+
+export async function getDashboards(workspaceId: string) {
+  return Dashboard.find({ workspaceId }).sort({ createdAt: -1 }).lean();
+}
+
+export async function getDashboard(dashboardId: string) {
+  const dashboard = await Dashboard.findById(dashboardId).lean();
+  if (!dashboard) throw new Error("Dashboard not found");
+  return dashboard;
+}
+
+export async function createDashboard(input: {
+  name: string;
+  description?: string;
+  workspaceId: string;
+  ownerId: string;
+}) {
+  const dashboard = new Dashboard({
+    name: input.name,
+    description: input.description,
+    workspaceId: input.workspaceId,
+    ownerId: input.ownerId,
+    gadgets: [],
+  });
+  return dashboard.save();
+}
+
+export async function updateDashboard(
+  dashboardId: string,
+  input: {
+    name?: string;
+    description?: string;
+    columnCount?: 2 | 3;
+    shared?: boolean;
+    sharedWith?: string[];
+    gadgets?: unknown[];
+  }
+) {
+  const dashboard = await Dashboard.findById(dashboardId);
+  if (!dashboard) throw new Error("Dashboard not found");
+
+  if (input.name !== undefined) dashboard.name = input.name;
+  if (input.description !== undefined) dashboard.description = input.description;
+  if (input.columnCount !== undefined) dashboard.columnCount = input.columnCount;
+  if (input.shared !== undefined) dashboard.shared = input.shared;
+  if (input.sharedWith !== undefined) dashboard.sharedWith = input.sharedWith;
+  if (input.gadgets !== undefined) dashboard.gadgets = input.gadgets as any;
+
+  return dashboard.save();
+}
+
+export async function deleteDashboard(dashboardId: string) {
+  const result = await Dashboard.findByIdAndDelete(dashboardId);
+  if (!result) throw new Error("Dashboard not found");
+  return result;
+}
+
+export async function getGadgetData(workspaceId: string, userId: string) {
+  const tasks = await Task.find({ workspaceId }).lean();
+  const projects = await prisma.project.findMany({ where: { workspaceId } });
+
+  const assignedToMe = tasks.filter((t) => t.assignee === userId).slice(0, 10);
+
+  const recentlyCreated = (tasks as any[])
+    .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 10);
+
+  const activeSprints = await prisma.sprint.findMany({
+    where: { project: { workspaceId }, status: "ACTIVE" },
+    include: { project: { select: { name: true } } },
+  });
+
+  const sprintStatusData = await Promise.all(
+    activeSprints.map(async (s) => {
+      const sprintTasks = await Task.find({ sprintId: s.id }).lean();
+      const total = (sprintTasks as any[]).reduce((sum, t) => sum + (t.storyPoints || 0), 0);
+      const done = (sprintTasks as any[])
+        .filter((t: any) => t.status === "done")
+        .reduce((sum, t: any) => sum + (t.storyPoints || 0), 0);
+      return {
+        sprintId: s.id,
+        name: s.name,
+        projectName: (s as any).project?.name || "",
+        totalPoints: total,
+        completedPoints: done,
+        progress: total > 0 ? Math.round((done / total) * 100) : 0,
+        endDate: s.endDate,
+      };
+    })
+  );
+
+  const activityStream = await AuditLog.find({ workspaceId })
+    .sort({ createdAt: -1 })
+    .limit(20)
+    .lean();
+
+  const statusCounts = {
+    todo: tasks.filter((t) => t.status === "todo").length,
+    inProgress: tasks.filter((t) => t.status === "in_progress").length,
+    inReview: tasks.filter((t) => t.status === "in_review").length,
+    done: tasks.filter((t) => t.status === "done").length,
+  };
+
+  const priorityCounts = {
+    highest: tasks.filter((t) => t.priority === "highest").length,
+    high: tasks.filter((t) => t.priority === "high").length,
+    medium: tasks.filter((t) => t.priority === "medium").length,
+    low: tasks.filter((t) => t.priority === "low").length,
+    lowest: tasks.filter((t) => t.priority === "lowest").length,
+  };
+
+  const typeCounts = {
+    task: tasks.filter((t) => t.type === "task").length,
+    bug: tasks.filter((t) => t.type === "bug").length,
+    epic: tasks.filter((t) => t.type === "epic").length,
+    story: tasks.filter((t) => t.type === "story").length,
+    subtask: tasks.filter((t) => t.type === "subtask").length,
+  };
+
+  return {
+    assignedToMe,
+    recentlyCreated,
+    sprintStatus: sprintStatusData,
+    activityStream,
+    statistics: {
+      byStatus: statusCounts,
+      byPriority: priorityCounts,
+      byType: typeCounts,
+    },
+  };
 }
