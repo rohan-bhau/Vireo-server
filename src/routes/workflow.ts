@@ -11,9 +11,13 @@ router.get("/project/:projectId", requireWorkspaceMember, workflowController.get
 router.get("/workspace/:workspaceId", requireWorkspaceMember, workflowController.getByWorkspace);
 router.get("/project/:projectId/default", requireWorkspaceMember, workflowController.getDefault);
 router.get("/:id", workflowController.getById);
+router.get("/:id/usage", workflowController.usage);
 
 router.post("/", workflowController.create);
 router.post("/seed", requireWorkspaceMember, workflowController.seed);
+router.post("/:id/copy", workflowController.copy);
+router.post("/:id/validate", workflowController.validateTransition);
+router.post("/:id/execute", workflowController.executeTransition);
 
 router.put("/:id", workflowController.update);
 
