@@ -18,6 +18,8 @@ export interface ITask {
   columnId?: string | null;
   position: number;
   labels: string[];
+  components: string[];
+  fixVersion?: string | null;
   dueDate?: Date | null;
   storyPoints?: number | null;
   parentTask?: string | null;
@@ -88,6 +90,14 @@ const taskSchema = new Schema<ITask>(
     labels: {
       type: [String],
       default: [],
+    },
+    components: {
+      type: [String],
+      default: [],
+    },
+    fixVersion: {
+      type: String,
+      default: null,
     },
     dueDate: {
       type: Date,

@@ -18,6 +18,8 @@ interface CreateTaskInput {
   boardId?: string;
   columnId?: string;
   labels?: string[];
+  components?: string[];
+  fixVersion?: string;
   dueDate?: string;
   storyPoints?: number;
   parentTask?: string;
@@ -100,6 +102,8 @@ export async function createTask(input: CreateTaskInput) {
     columnId: input.columnId || null,
     position: maxPosition,
     labels: input.labels || [],
+    components: input.components || [],
+    fixVersion: input.fixVersion || null,
     dueDate: input.dueDate ? new Date(input.dueDate) : null,
     storyPoints: input.storyPoints || null,
     parentTask: input.parentTask || null,
@@ -154,6 +158,8 @@ interface UpdateTaskInput {
   priority?: TaskPriority;
   assignee?: string | null;
   labels?: string[];
+  components?: string[];
+  fixVersion?: string | null;
   dueDate?: string | null;
   storyPoints?: number | null;
   parentTask?: string | null;
@@ -207,6 +213,8 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
   if (input.priority !== undefined) task.priority = input.priority;
   if (input.assignee !== undefined) task.assignee = input.assignee;
   if (input.labels !== undefined) task.labels = input.labels;
+  if (input.components !== undefined) task.components = input.components;
+  if (input.fixVersion !== undefined) task.fixVersion = input.fixVersion;
   if (input.dueDate !== undefined) task.dueDate = input.dueDate ? new Date(input.dueDate) : null;
   if (input.storyPoints !== undefined) task.storyPoints = input.storyPoints;
   if (input.parentTask !== undefined) task.parentTask = input.parentTask;

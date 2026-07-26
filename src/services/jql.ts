@@ -62,7 +62,7 @@ const FIELD_MAP: Record<string, string> = {
   reporter: "reporter",
   priority: "priority",
   labels: "labels",
-  component: "component",
+  component: "components",
   fixversion: "fixVersion",
   sprint: "sprintId",
   created: "createdAt",
