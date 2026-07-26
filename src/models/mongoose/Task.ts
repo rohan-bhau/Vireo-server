@@ -25,6 +25,7 @@ export interface ITask {
   attachments: { url: string; filename: string; publicId: string }[];
   workspaceId: string;
   sprintId?: string | null;
+  securityLevel?: string | null;
 }
 
 const taskSchema = new Schema<ITask>(
@@ -124,6 +125,10 @@ const taskSchema = new Schema<ITask>(
       required: true,
     },
     sprintId: {
+      type: String,
+      default: null,
+    },
+    securityLevel: {
       type: String,
       default: null,
     },

@@ -3,6 +3,7 @@ import ActivityLog from "../models/mongoose/ActivityLog";
 import Task from "../models/mongoose/Task";
 import { AppError } from "../utils/AppError";
 import { notifyMentioned } from "./notification";
+import { checkProjectPermission, checkIssueSecurityAccess } from "./permission";
 
 export async function getTaskComments(taskKey: string) {
   return Comment.find({ taskId: taskKey }).sort({ createdAt: -1 });
@@ -13,6 +14,12 @@ export async function createComment(
   content: string,
   authorId: string
 ) {
+  const task = await Task.findOne({ taskKey });
+  if (!task) throw new AppError("Task not found", 404);
+
+  const hasPerm = await checkProjectPermission(authorId, task.projectId, "ADD_COMMENTS");
+  if (!hasPerm) throw new AppError("You do not have permission to comment in this project", 403);
+
   const comment = await Comment.create({
     taskId: taskKey,
     authorId,
@@ -28,9 +35,9 @@ export async function createComment(
     timestamp: new Date(),
   });
 
-  const task = await Task.findOne({ taskKey });
-  if (task) {
-    await notifyMentioned(taskKey, task.title, content, authorId);
+  const foundTask = await Task.findOne({ taskKey });
+  if (foundTask) {
+    await notifyMentioned(taskKey, foundTask.title, content, authorId);
   }
 
   return comment;

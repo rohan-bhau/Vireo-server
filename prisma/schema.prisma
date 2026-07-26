@@ -86,17 +86,19 @@ enum BoardType {
 }
 
 model Project {
-  id            String          @id @default(uuid())
-  name          String
-  description   String?
-  key           String
-  workspaceId   String
-  ownerId       String
-  template      ProjectTemplate @default(SCRUM)
-  avatar        String?
-  isTeamManaged Boolean         @default(true)
-  createdAt     DateTime        @default(now())
-  updatedAt     DateTime        @updatedAt
+  id                   String          @id @default(uuid())
+  name                 String
+  description          String?
+  key                  String
+  workspaceId          String
+  ownerId              String
+  template             ProjectTemplate @default(SCRUM)
+  avatar               String?
+  isTeamManaged        Boolean         @default(true)
+  permissionSchemeId   String?
+  issueSecuritySchemeId String?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
 
   workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   boards    Board[]
