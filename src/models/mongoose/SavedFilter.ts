@@ -11,9 +11,11 @@ export interface ISavedFilter {
   userId: string;
   workspaceId: string;
   projectId?: string;
+  jql?: string;
   conditions: IFilterCondition[];
   sortField?: string;
   sortOrder?: "asc" | "desc";
+  columns?: string[];
   isShared: boolean;
 }
 
@@ -32,9 +34,11 @@ const savedFilterSchema = new Schema<ISavedFilter>(
     userId: { type: String, required: true },
     workspaceId: { type: String, required: true },
     projectId: String,
+    jql: String,
     conditions: { type: [filterConditionSchema], default: [] },
     sortField: String,
     sortOrder: { type: String, enum: ["asc", "desc"], default: "asc" },
+    columns: { type: [String], default: ["taskKey", "title", "status", "priority", "assignee", "updatedAt"] },
     isShared: { type: Boolean, default: false },
   },
   { timestamps: true }
