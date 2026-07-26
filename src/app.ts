@@ -27,6 +27,7 @@ import dashboardRoutes from "./routes/dashboard";
 import conversationRoutes from "./routes/conversation";
 import callRoutes from "./routes/calls";
 import billingRoutes from "./routes/billing";
+import adminRoutes from "./routes/admin";
 import webhookRoutes from "./routes/webhook";
 import { createSocketServer } from "./socket";
 
@@ -70,6 +71,7 @@ app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/conversations", conversationRoutes);
 app.use("/api/calls", callRoutes);
 app.use("/api/billing", billingRoutes);
+app.use("/api/admin", adminRoutes);
 
 app.use(errorHandler);
 

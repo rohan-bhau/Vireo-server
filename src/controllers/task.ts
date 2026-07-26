@@ -77,7 +77,7 @@ export async function update(req: AuthRequest, res: Response, next: NextFunction
 export async function remove(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const taskKey = req.params.taskKey as string;
-    await taskService.deleteTask(taskKey);
+    await taskService.deleteTask(taskKey, req.userId);
     res.status(200).json({ status: "success", message: "Task deleted" });
   } catch (error) {
     next(error);

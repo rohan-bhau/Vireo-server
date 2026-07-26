@@ -1,6 +1,7 @@
 import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
 import type { ProjectTemplate, BoardType } from "@prisma/client";
+import * as permissionService from "./permission";
 
 interface CreateProjectInput {
   name: string;
@@ -59,6 +60,9 @@ export async function createProject(input: CreateProjectInput) {
     },
     include: { columns: { orderBy: { position: "asc" } } },
   });
+
+  await permissionService.ensureDefaultProjectRoles(project.id, input.workspaceId, input.ownerId);
+  await permissionService.ensureDefaultPermissionScheme(input.workspaceId, input.ownerId);
 
   return { ...project, board };
 }

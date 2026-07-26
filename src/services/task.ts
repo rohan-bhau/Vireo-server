@@ -4,6 +4,7 @@ import ActivityLog from "../models/mongoose/ActivityLog";
 import { AppError } from "../utils/AppError";
 import { notifyAssigned, notifyStatusChanged } from "./notification";
 import { evaluateTriggers } from "./automation";
+import { checkProjectPermission, checkIssueSecurityAccess } from "./permission";
 
 interface CreateTaskInput {
   title: string;
@@ -75,6 +76,9 @@ export async function createTask(input: CreateTaskInput) {
 
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) throw new AppError("Project not found", 404);
+
+  const hasPerm = await checkProjectPermission(input.reporter, projectId, "CREATE_ISSUES");
+  if (!hasPerm) throw new AppError("You do not have permission to create issues in this project", 403);
 
   const taskKey = await generateTaskKey(projectId);
 
@@ -161,6 +165,12 @@ interface UpdateTaskInput {
 export async function updateTask(taskKey: string, input: UpdateTaskInput, actorId: string) {
   const task = await Task.findOne({ taskKey });
   if (!task) throw new AppError("Task not found", 404);
+
+  const hasPerm = await checkProjectPermission(actorId, task.projectId, "EDIT_ISSUES");
+  if (!hasPerm) throw new AppError("You do not have permission to edit issues in this project", 403);
+
+  const canAccess = await checkIssueSecurityAccess(actorId, task);
+  if (!canAccess) throw new AppError("You do not have permission to access this issue", 403);
 
   const changes: { field: string; oldValue: string; newValue: string }[] = [];
 
@@ -253,9 +263,14 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
   return updated;
 }
 
-export async function deleteTask(taskKey: string) {
+export async function deleteTask(taskKey: string, actorId?: string) {
   const task = await Task.findOne({ taskKey });
   if (!task) throw new AppError("Task not found", 404);
+
+  if (actorId) {
+    const hasPerm = await checkProjectPermission(actorId, task.projectId, "DELETE_ISSUES");
+    if (!hasPerm) throw new AppError("You do not have permission to delete issues in this project", 403);
+  }
 
   await ActivityLog.deleteMany({ taskId: taskKey });
   await Task.deleteOne({ taskKey });
@@ -264,6 +279,9 @@ export async function deleteTask(taskKey: string) {
 export async function moveTask(taskKey: string, columnId: string, position: number, actorId: string) {
   const task = await Task.findOne({ taskKey });
   if (!task) throw new AppError("Task not found", 404);
+
+  const hasPerm = await checkProjectPermission(actorId, task.projectId, "MOVE_ISSUES");
+  if (!hasPerm) throw new AppError("You do not have permission to move issues in this project", 403);
 
   const column = await prisma.column.findUnique({ where: { id: columnId } });
 
