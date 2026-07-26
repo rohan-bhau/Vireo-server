@@ -6,9 +6,11 @@ interface CreateFilterInput {
   userId: string;
   workspaceId: string;
   projectId?: string;
+  jql?: string;
   conditions: { field: string; operator: string; value: string }[];
   sortField?: string;
   sortOrder?: "asc" | "desc";
+  columns?: string[];
   isShared?: boolean;
 }
 
@@ -36,9 +38,11 @@ export async function updateFilter(id: string, input: Partial<CreateFilterInput>
   if (!filter) throw new AppError("Saved filter not found", 404);
 
   if (input.name !== undefined) filter.name = input.name;
+  if (input.jql !== undefined) filter.jql = input.jql;
   if (input.conditions !== undefined) filter.conditions = input.conditions;
   if (input.sortField !== undefined) filter.sortField = input.sortField;
   if (input.sortOrder !== undefined) filter.sortOrder = input.sortOrder;
+  if (input.columns !== undefined) filter.columns = input.columns;
   if (input.isShared !== undefined) filter.isShared = input.isShared;
 
   return filter.save();

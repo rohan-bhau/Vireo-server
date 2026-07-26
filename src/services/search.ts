@@ -1,5 +1,6 @@
 import Task from "../models/mongoose/Task";
 import Epic from "../models/mongoose/Epic";
+import User from "../models/mongoose/User";
 import { prisma } from "../config/prisma";
 
 interface SearchQuery {
@@ -228,4 +229,107 @@ export async function globalSearch(userId: string, query: string) {
     projects,
     total: tasks.length + epics.length + workspaces.length + projects.length,
   };
+}
+
+export async function getFieldSuggestions(field: string, query: string, workspaceId?: string) {
+  const searchRegex = new RegExp(query, "i");
+  const suggestions: { value: string; label: string }[] = [];
+
+  switch (field) {
+    case "assignee":
+    case "reporter": {
+      if (workspaceId) {
+        const members = await prisma.workspaceMember.findMany({
+          where: { workspaceId },
+        });
+        const userIds = members.map((m) => m.userId);
+        const users = await User.find({ _id: { $in: userIds } }).limit(20);
+        for (const u of users) {
+          const name = u.name || u.email || u._id;
+          if (String(name).match(searchRegex)) {
+            suggestions.push({ value: String(u._id), label: String(name) });
+          }
+        }
+      }
+      break;
+    }
+    case "status": {
+      const statuses = ["todo", "in_progress", "in_review", "done"];
+      for (const s of statuses) {
+        if (s.match(searchRegex)) {
+          suggestions.push({ value: s, label: s.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()) });
+        }
+      }
+      break;
+    }
+    case "type":
+    case "issuetype": {
+      const types = ["task", "bug", "story", "epic", "subtask"];
+      for (const t of types) {
+        if (t.match(searchRegex)) {
+          suggestions.push({ value: t, label: t.charAt(0).toUpperCase() + t.slice(1) });
+        }
+      }
+      break;
+    }
+    case "priority": {
+      const priorities = ["highest", "high", "medium", "low", "lowest"];
+      for (const p of priorities) {
+        if (p.match(searchRegex)) {
+          suggestions.push({ value: p, label: p.charAt(0).toUpperCase() + p.slice(1) });
+        }
+      }
+      break;
+    }
+    case "project": {
+      if (workspaceId) {
+        const projects = await prisma.project.findMany({
+          where: {
+            workspaceId,
+            OR: [{ name: { contains: query } }, { key: { contains: query } }],
+          },
+          take: 10,
+        });
+        for (const p of projects) {
+          suggestions.push({ value: p.id, label: `${p.name} (${p.key})` });
+        }
+      }
+      break;
+    }
+    case "labels": {
+      if (workspaceId) {
+        const tasks = await Task.find({
+          workspaceId,
+          labels: { $regex: query, $options: "i" },
+        }).limit(50);
+        const seen = new Set<string>();
+        for (const t of tasks) {
+          for (const l of t.labels) {
+            if (!seen.has(l) && l.match(searchRegex)) {
+              seen.add(l);
+              suggestions.push({ value: l, label: l });
+            }
+          }
+        }
+      }
+      break;
+    }
+    case "sprint": {
+      if (workspaceId) {
+        const sprints = await prisma.sprint.findMany({
+          where: {
+            workspaceId,
+            name: { contains: query },
+          },
+          take: 10,
+        });
+        for (const s of sprints) {
+          suggestions.push({ value: s.id, label: s.name });
+        }
+      }
+      break;
+    }
+  }
+
+  return suggestions.slice(0, 10);
 }
