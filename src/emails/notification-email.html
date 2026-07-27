@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notification from Vireo</title>
+</head>
+<body style="margin:0;padding:0;background-color:#F0F0F5;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#F0F0F5;padding:40px 16px">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="480" cellpadding="0" cellspacing="0" style="background-color:#FFFFFF;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
+          <tr>
+            <td style="padding:32px 32px 0">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td>
+                    <svg width="100" height="28" viewBox="0 0 100 28" fill="none" xmlns="http://www.w3.org/2000/svg" style="display:block">
+                      <text x="0" y="20" font-family="system-ui,-apple-system,sans-serif" font-size="20" font-weight="800" fill="#121C28">Vireo</text>
+                    </svg>
+                    <p style="margin:16px 0 0;font-size:13px;color:#737686;text-transform:uppercase;letter-spacing:0.5px;font-weight:600">{{typeLabel}}</p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:20px 32px 0">
+              <p style="margin:0 0 8px;font-size:15px;line-height:1.6;color:#434655">
+                Hi <strong style="color:#121C28">{{userName}}</strong>,
+              </p>
+              <p style="margin:0 0 16px;font-size:15px;line-height:1.6;color:#434655">
+                {{message}}
+              </p>
+              <div style="background-color:#F8F9FF;border-radius:8px;padding:16px;margin-bottom:16px;border-left:3px solid #2563EB">
+                <p style="margin:0 0 4px;font-size:14px;font-weight:600;color:#121C28">{{taskId}} — {{taskTitle}}</p>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:0 32px">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td align="center">
+                    <a href="{{viewUrl}}" style="display:inline-block;background-color:#2563EB;color:#FFFFFF;font-size:15px;font-weight:600;text-decoration:none;padding:14px 40px;border-radius:8px;letter-spacing:0.3px">
+                      View in Vireo
+                    </a>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:32px 32px 24px;border-top:1px solid #E5E7EB;margin-top:24px">
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+                <tr>
+                  <td style="text-align:center">
+                    <p style="margin:0 0 8px;font-size:12px;color:#9CA3AF;line-height:1.5">
+                      <a href="{{manageUrl}}" style="color:#737686;text-decoration:underline">Manage notification preferences</a>
+                    </p>
+                    <p style="margin:0;font-size:12px;color:#9CA3AF;line-height:1.5">
+                      Vireo — AI-powered project management platform
+                    </p>
+                  </td>
+                </tr>
+              </table>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

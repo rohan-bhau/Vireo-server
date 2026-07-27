@@ -105,3 +105,39 @@ export async function sendOtpEmail(to: string, name: string, otp: string) {
     html,
   });
 }
+
+export async function sendNotificationEmail(
+  to: string,
+  userName: string,
+  data: {
+    type: string;
+    actorName: string;
+    taskId: string;
+    taskTitle: string;
+    message: string;
+    workspaceId: string;
+  }
+) {
+  const viewUrl = `${config.clientUrl}/task/${data.taskId}`;
+  const manageUrl = `${config.clientUrl}/profile/notifications`;
+
+  const template = loadTemplate("notification-email.html");
+  const html = compile(template, {
+    userName,
+    actorName: data.actorName,
+    taskId: data.taskId,
+    taskTitle: data.taskTitle,
+    message: data.message,
+    viewUrl,
+    manageUrl,
+    typeLabel: data.type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
+  });
+
+  const transporter = getTransporter();
+  await transporter.sendMail({
+    from: sender,
+    to,
+    subject: `[${data.taskId}] ${data.message}`,
+    html,
+  });
+}

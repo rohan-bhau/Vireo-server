@@ -175,7 +175,7 @@ export async function getProfile(userId: string) {
 
 export async function updateProfile(
   userId: string,
-  updates: { name?: string; avatar?: string }
+  updates: { name?: string; avatar?: string; notificationPreferences?: any }
 ) {
   const user = await User.findByIdAndUpdate(userId, updates, {
     new: true,
@@ -374,6 +374,7 @@ function sanitizeUser(user: IUser) {
     avatar: user.avatar,
     role: user.role,
     isEmailVerified: user.isEmailVerified,
+    notificationPreferences: user.notificationPreferences,
     createdAt: user.createdAt,
   };
 }

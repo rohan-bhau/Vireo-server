@@ -1,6 +1,15 @@
 import mongoose, { Schema } from "mongoose";
 
-export type NotificationType = "assigned" | "mentioned" | "status_changed" | "commented";
+export type NotificationType =
+  | "assigned"
+  | "mentioned"
+  | "status_changed"
+  | "commented"
+  | "issue_created"
+  | "issue_updated"
+  | "issue_deleted"
+  | "sprint_started"
+  | "sprint_completed";
 
 export interface INotification {
   userId: string;
@@ -11,6 +20,9 @@ export interface INotification {
   actorName: string;
   message: string;
   read: boolean;
+  projectId?: string;
+  workspaceId?: string;
+  schemeId?: string;
   createdAt: Date;
 }
 
@@ -23,7 +35,17 @@ const notificationSchema = new Schema<INotification>(
     },
     type: {
       type: String,
-      enum: ["assigned", "mentioned", "status_changed", "commented"],
+      enum: [
+        "assigned",
+        "mentioned",
+        "status_changed",
+        "commented",
+        "issue_created",
+        "issue_updated",
+        "issue_deleted",
+        "sprint_started",
+        "sprint_completed",
+      ],
       required: true,
     },
     taskId: {
@@ -50,6 +72,18 @@ const notificationSchema = new Schema<INotification>(
       type: Boolean,
       default: false,
     },
+    projectId: {
+      type: String,
+      default: null,
+    },
+    workspaceId: {
+      type: String,
+      default: null,
+    },
+    schemeId: {
+      type: String,
+      default: null,
+    },
     createdAt: {
       type: Date,
       default: Date.now,
@@ -60,6 +94,8 @@ const notificationSchema = new Schema<INotification>(
 
 notificationSchema.index({ userId: 1, createdAt: -1 });
 notificationSchema.index({ userId: 1, read: 1 });
+notificationSchema.index({ userId: 1, type: 1 });
+notificationSchema.index({ projectId: 1 });
 
 const Notification = mongoose.model<INotification>("Notification", notificationSchema);
 

@@ -1,6 +1,28 @@
 import mongoose, { Document, Schema } from "mongoose";
 import bcrypt from "bcryptjs";
 
+export interface INotificationPreferences {
+  email: boolean;
+  push: boolean;
+  onAssigned: boolean;
+  onMentioned: boolean;
+  onStatusChange: boolean;
+  onCommented: boolean;
+  onIssueCreated: boolean;
+  onSprintEvents: boolean;
+}
+
+export interface IProjectNotificationOverride {
+  projectId: string;
+  email: boolean;
+  onAssigned: boolean;
+  onMentioned: boolean;
+  onStatusChange: boolean;
+  onCommented: boolean;
+  onIssueCreated: boolean;
+  onSprintEvents: boolean;
+}
+
 export interface IUser extends Document {
   name: string;
   email: string;
@@ -14,10 +36,26 @@ export interface IUser extends Document {
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   isEmailVerified: boolean;
+  notificationPreferences?: INotificationPreferences;
+  projectNotificationOverrides?: IProjectNotificationOverride[];
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
+
+const notificationPreferencesSchema = new Schema<INotificationPreferences>(
+  {
+    email: { type: Boolean, default: true },
+    push: { type: Boolean, default: true },
+    onAssigned: { type: Boolean, default: true },
+    onMentioned: { type: Boolean, default: true },
+    onStatusChange: { type: Boolean, default: true },
+    onCommented: { type: Boolean, default: true },
+    onIssueCreated: { type: Boolean, default: true },
+    onSprintEvents: { type: Boolean, default: true },
+  },
+  { _id: false }
+);
 
 const userSchema = new Schema<IUser>(
   {
@@ -73,6 +111,23 @@ const userSchema = new Schema<IUser>(
     isEmailVerified: {
       type: Boolean,
       default: false,
+    },
+    notificationPreferences: {
+      type: notificationPreferencesSchema,
+      default: () => ({}),
+    },
+    projectNotificationOverrides: {
+      type: [{
+        projectId: { type: String, required: true },
+        email: { type: Boolean, default: true },
+        onAssigned: { type: Boolean, default: true },
+        onMentioned: { type: Boolean, default: true },
+        onStatusChange: { type: Boolean, default: true },
+        onCommented: { type: Boolean, default: true },
+        onIssueCreated: { type: Boolean, default: true },
+        onSprintEvents: { type: Boolean, default: true },
+      }],
+      default: [],
     },
   },
   { timestamps: true }
