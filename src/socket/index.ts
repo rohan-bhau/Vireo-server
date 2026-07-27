@@ -6,6 +6,7 @@ import * as conversationService from "../services/conversation";
 import User from "../models/mongoose/User";
 
 const onlineUsers = new Map<string, Set<string>>();
+const lastSeen = new Map<string, Date>();
 
 export function getIO(): Server | null {
   return (globalThis as any).__io || null;
@@ -45,6 +46,15 @@ export function createSocketServer(httpServer: HTTPServer) {
     onlineUsers.get(userId)!.add(socket.id);
 
     io.emit("presence-online", { userId });
+
+    socket.on("presence-status", (targetUserId: string) => {
+      const online = onlineUsers.has(targetUserId) && onlineUsers.get(targetUserId)!.size > 0;
+      socket.emit("presence-status-response", {
+        userId: targetUserId,
+        online,
+        lastSeen: online ? null : (lastSeen.get(targetUserId) || null),
+      });
+    });
 
     socket.on("join-conversation", (conversationId: string) => {
       socket.join(`conversation:${conversationId}`);
@@ -163,7 +173,10 @@ export function createSocketServer(httpServer: HTTPServer) {
         sockets.delete(socket.id);
         if (sockets.size === 0) {
           onlineUsers.delete(userId);
-          io.emit("presence-offline", { userId });
+          const now = new Date();
+          lastSeen.set(userId, now);
+          io.emit("presence-offline", { userId, lastSeen: now.toISOString() });
+          User.findByIdAndUpdate(userId, { lastSeen: now }).catch(() => {});
         }
       }
     });

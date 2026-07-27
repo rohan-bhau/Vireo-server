@@ -42,4 +42,50 @@ router.post(
   integrationController.test
 );
 
+router.get(
+  "/:workspaceId/webhook/logs",
+  requireWorkspaceMember,
+  integrationController.getWebhookLogs
+);
+
+router.get(
+  "/:workspaceId/github/data",
+  requireWorkspaceMember,
+  integrationController.getGitHubData
+);
+
+router.post(
+  "/:workspaceId/github/sync-branch",
+  requireWorkspaceMember,
+  requireWorkspaceRole("ADMIN"),
+  integrationController.syncGitHubBranch
+);
+
+router.post(
+  "/:workspaceId/slack/send",
+  requireWorkspaceMember,
+  requireWorkspaceRole("ADMIN"),
+  integrationController.sendMessage
+);
+
+router.post(
+  "/:workspaceId/slack/issue",
+  requireWorkspaceMember,
+  requireWorkspaceRole("MEMBER"),
+  integrationController.createSlackIssue
+);
+
+router.get(
+  "/:workspaceId/webhook",
+  requireWorkspaceMember,
+  integrationController.listWebhooks
+);
+
+router.post(
+  "/:workspaceId/webhook",
+  requireWorkspaceMember,
+  requireWorkspaceRole("ADMIN"),
+  integrationController.createWebhook
+);
+
 export default router;

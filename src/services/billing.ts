@@ -1,5 +1,6 @@
 import Stripe from "stripe";
 import Subscription, { ISubscription } from "../models/mongoose/Subscription";
+import Task from "../models/mongoose/Task";
 import User from "../models/mongoose/User";
 import { config } from "../config";
 import { AppError } from "../utils/AppError";
@@ -452,4 +453,84 @@ export async function checkWorkspaceLimits(
   }
 
   return true;
+}
+
+export async function checkAndExpireTrials() {
+  const expired = await Subscription.find({
+    trialEndsAt: { $lt: new Date() },
+    stripeSubscriptionId: { $exists: false },
+    plan: { $ne: "free" },
+  });
+
+  let downgraded = 0;
+  for (const sub of expired) {
+    sub.plan = "free";
+    sub.status = "active";
+    sub.memberLimit = 3;
+    sub.projectLimit = 2;
+    sub.trialEndsAt = undefined;
+    sub.trialStartedAt = undefined;
+    await sub.save();
+    downgraded++;
+  }
+
+  return { downgraded };
+}
+
+export interface UsageStats {
+  memberCount: number;
+  projectCount: number;
+  storageUsed: number;
+  memberLimit: number;
+  projectLimit: number;
+  storageLimit: number;
+}
+
+export async function getUsageStats(workspaceId: string): Promise<UsageStats> {
+  const subscription = await getSubscription(workspaceId);
+
+  const [memberCount, projectCount] = await Promise.all([
+    prisma.workspaceMember.count({ where: { workspaceId } }),
+    prisma.project.count({ where: { workspaceId } }),
+  ]);
+
+  const storageAgg = await Task.aggregate([
+    { $match: { workspaceId } },
+    { $unwind: { path: "$attachments", preserveNullAndEmptyArrays: false } },
+    { $group: { _id: null, total: { $sum: 1 } } },
+  ]);
+  const storageUsed = (storageAgg[0]?.total || 0) * 51200;
+
+  const storageLimit = subscription.plan === "enterprise" ? 10737418240 : subscription.plan === "pro" ? 5368709120 : 1073741824;
+
+  return {
+    memberCount,
+    projectCount,
+    storageUsed,
+    memberLimit: subscription.memberLimit,
+    projectLimit: subscription.projectLimit,
+    storageLimit,
+  };
+}
+
+export async function enforceMemberLimit(workspaceId: string) {
+  const stats = await getUsageStats(workspaceId);
+  const atLimit = stats.memberCount >= stats.memberLimit;
+  return {
+    allowed: !atLimit,
+    atLimit,
+    memberCount: stats.memberCount,
+    memberLimit: stats.memberLimit,
+  };
+}
+
+export async function enforceProjectLimit(workspaceId: string) {
+  const stats = await getUsageStats(workspaceId);
+  const atLimit = stats.projectCount >= stats.projectLimit;
+  return {
+    allowed: !atLimit,
+    atLimit,
+    projectCount: stats.projectCount,
+    projectLimit: stats.projectLimit,
+  };
 }
