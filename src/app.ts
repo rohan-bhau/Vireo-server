@@ -37,6 +37,7 @@ import versionRoutes from "./routes/version";
 import labelRoutes from "./routes/label";
 import webhookRoutes from "./routes/webhook";
 import { createSocketServer } from "./socket";
+import { initCronScheduler } from "./services/cronScheduler";
 
 const app = express();
 const httpServer = createServer(app);
@@ -46,6 +47,10 @@ app.use(cors({ origin: config.clientUrl, credentials: true }));
 connectMongoDB();
 
 createSocketServer(httpServer);
+
+setTimeout(() => {
+  initCronScheduler();
+}, 3000);
 
 app.use("/api/webhooks", webhookRoutes);
 

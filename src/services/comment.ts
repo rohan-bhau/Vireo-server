@@ -4,6 +4,7 @@ import Task from "../models/mongoose/Task";
 import { AppError } from "../utils/AppError";
 import { notifyMentioned, notifyIssueCommented } from "./notification";
 import { checkProjectPermission, checkIssueSecurityAccess } from "./permission";
+import { evaluateTriggers } from "./automation";
 
 export async function getTaskComments(taskKey: string) {
   return Comment.find({ taskId: taskKey }).sort({ createdAt: -1 });
@@ -51,6 +52,13 @@ export async function createComment(
       foundTask.reporter,
       foundTask.watchers
     );
+    evaluateTriggers("comment.added", {
+      taskKey,
+      task: foundTask,
+      workspaceId: foundTask.workspaceId,
+      projectId: foundTask.projectId,
+      actorId: authorId,
+    });
   }
 
   return comment;
