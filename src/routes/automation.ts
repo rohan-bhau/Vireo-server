@@ -10,8 +10,11 @@ router.use(authenticate);
 router.get("/workspace/:workspaceId", requireWorkspaceMember, automationController.getByWorkspace);
 router.get("/project/:projectId", requireWorkspaceMember, automationController.getByProject);
 router.get("/:id", automationController.getById);
+router.get("/:id/audit", automationController.getAudit);
 
 router.post("/", automationController.create);
+router.post("/:id/copy", automationController.copy);
+router.post("/parse-natural-language", automationController.parseNaturalLanguage);
 
 router.put("/:id", automationController.update);
 router.put("/:id/toggle", automationController.toggle);
