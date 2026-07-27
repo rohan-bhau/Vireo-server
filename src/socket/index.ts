@@ -7,6 +7,10 @@ import User from "../models/mongoose/User";
 
 const onlineUsers = new Map<string, Set<string>>();
 
+export function getIO(): Server | null {
+  return (globalThis as any).__io || null;
+}
+
 export function createSocketServer(httpServer: HTTPServer) {
   const io = new Server(httpServer, {
     cors: { origin: config.clientUrl, credentials: true },
@@ -27,6 +31,8 @@ export function createSocketServer(httpServer: HTTPServer) {
       next(new Error("Invalid token"));
     }
   });
+
+  (globalThis as any).__io = io;
 
   io.on("connection", (socket) => {
     const userId = (socket as any).userId;

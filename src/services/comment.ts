@@ -2,7 +2,7 @@ import Comment from "../models/mongoose/Comment";
 import ActivityLog from "../models/mongoose/ActivityLog";
 import Task from "../models/mongoose/Task";
 import { AppError } from "../utils/AppError";
-import { notifyMentioned } from "./notification";
+import { notifyMentioned, notifyIssueCommented } from "./notification";
 import { checkProjectPermission, checkIssueSecurityAccess } from "./permission";
 
 export async function getTaskComments(taskKey: string) {
@@ -37,7 +37,20 @@ export async function createComment(
 
   const foundTask = await Task.findOne({ taskKey });
   if (foundTask) {
-    await notifyMentioned(taskKey, foundTask.title, content, authorId);
+    await notifyMentioned(taskKey, foundTask.title, content, authorId, {
+      projectId: foundTask.projectId,
+      workspaceId: foundTask.workspaceId,
+    });
+    await notifyIssueCommented(
+      taskKey,
+      foundTask.title,
+      authorId,
+      foundTask.workspaceId,
+      foundTask.projectId,
+      foundTask.assignee,
+      foundTask.reporter,
+      foundTask.watchers
+    );
   }
 
   return comment;

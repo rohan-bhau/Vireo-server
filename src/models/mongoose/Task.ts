@@ -28,6 +28,7 @@ export interface ITask {
   workspaceId: string;
   sprintId?: string | null;
   securityLevel?: string | null;
+  watchers: string[];
 }
 
 const taskSchema = new Schema<ITask>(
@@ -141,6 +142,10 @@ const taskSchema = new Schema<ITask>(
     securityLevel: {
       type: String,
       default: null,
+    },
+    watchers: {
+      type: [String],
+      default: [],
     },
   },
   { timestamps: true }

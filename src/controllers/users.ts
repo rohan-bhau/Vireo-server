@@ -21,8 +21,12 @@ export async function updateProfile(
   next: NextFunction
 ) {
   try {
-    const { name, avatar } = req.body;
-    const user = await authService.updateProfile(req.userId!, { name, avatar });
+    const { name, avatar, notificationPreferences } = req.body;
+    const user = await authService.updateProfile(req.userId!, {
+      name,
+      avatar,
+      notificationPreferences,
+    });
     res.status(200).json({ status: "success", data: { user } });
   } catch (error) {
     next(error);

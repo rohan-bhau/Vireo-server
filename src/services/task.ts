@@ -2,7 +2,13 @@ import { prisma } from "../config/prisma";
 import Task, { TaskStatus, TaskPriority, TaskType } from "../models/mongoose/Task";
 import ActivityLog from "../models/mongoose/ActivityLog";
 import { AppError } from "../utils/AppError";
-import { notifyAssigned, notifyStatusChanged } from "./notification";
+import {
+  notifyAssigned,
+  notifyStatusChanged,
+  notifyIssueCreated,
+  notifyIssueUpdated,
+  notifyIssueDeleted,
+} from "./notification";
 import { evaluateTriggers } from "./automation";
 import { checkProjectPermission, checkIssueSecurityAccess } from "./permission";
 
@@ -124,6 +130,15 @@ export async function createTask(input: CreateTaskInput) {
     projectId,
     actorId: input.reporter,
   });
+
+  notifyIssueCreated(
+    task.taskKey,
+    task.title,
+    input.reporter,
+    input.workspaceId,
+    projectId,
+    input.reporter
+  );
 
   return task;
 }
@@ -268,6 +283,19 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
     });
   }
 
+  if (changes.length > 0) {
+    notifyIssueUpdated(
+      taskKey,
+      task.title,
+      actorId,
+      task.workspaceId,
+      task.projectId,
+      task.assignee,
+      task.reporter,
+      task.watchers
+    );
+  }
+
   return updated;
 }
 
@@ -280,8 +308,17 @@ export async function deleteTask(taskKey: string, actorId?: string) {
     if (!hasPerm) throw new AppError("You do not have permission to delete issues in this project", 403);
   }
 
+  const taskTitle = task.title;
+  const taskWorkspaceId = task.workspaceId;
+  const taskProjectId = task.projectId;
+  const taskReporter = task.reporter;
+
   await ActivityLog.deleteMany({ taskId: taskKey });
   await Task.deleteOne({ taskKey });
+
+  if (actorId) {
+    notifyIssueDeleted(taskKey, taskTitle, actorId, taskWorkspaceId, taskProjectId, taskReporter);
+  }
 }
 
 export async function moveTask(taskKey: string, columnId: string, position: number, actorId: string) {
