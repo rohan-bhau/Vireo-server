@@ -36,6 +36,7 @@ export interface IUser extends Document {
   resetPasswordToken?: string;
   resetPasswordExpires?: Date;
   isEmailVerified: boolean;
+  lastSeen?: Date;
   notificationPreferences?: INotificationPreferences;
   projectNotificationOverrides?: IProjectNotificationOverride[];
   createdAt: Date;
@@ -111,6 +112,9 @@ const userSchema = new Schema<IUser>(
     isEmailVerified: {
       type: Boolean,
       default: false,
+    },
+    lastSeen: {
+      type: Date,
     },
     notificationPreferences: {
       type: notificationPreferencesSchema,

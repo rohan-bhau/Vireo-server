@@ -1,6 +1,6 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-export type IntegrationType = "slack" | "github";
+export type IntegrationType = "slack" | "github" | "webhook";
 
 export interface IIntegration extends Document {
   workspaceId: string;
