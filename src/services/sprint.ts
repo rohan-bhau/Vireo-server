@@ -105,7 +105,7 @@ export async function startSprint(sprintId: string) {
   return updated;
 }
 
-export async function completeSprint(sprintId: string) {
+export async function completeSprint(sprintId: string, options?: { goalCompleted?: boolean; moveToSprintId?: string }) {
   const sprint = await prisma.sprint.findUnique({
     where: { id: sprintId },
   });
@@ -119,8 +119,17 @@ export async function completeSprint(sprintId: string) {
     data: {
       status: "COMPLETED",
       endDate: sprint.endDate || new Date(),
+      ...(options?.goalCompleted !== undefined ? { goalCompleted: options.goalCompleted } : {}),
     },
   });
+
+  if (options?.moveToSprintId) {
+    const Task = (await import("../models/mongoose/Task")).default;
+    await Task.updateMany(
+      { sprintId, status: { $ne: "done" } },
+      { sprintId: options.moveToSprintId }
+    );
+  }
 
   return updated;
 }

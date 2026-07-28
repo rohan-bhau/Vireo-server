@@ -165,14 +165,21 @@ export async function reorderColumns(
     throw new AppError("Board not found", 404);
   }
 
-  const updates = columnIds.map((id, index) =>
-    prisma.column.update({
-      where: { id },
-      data: { position: index },
-    })
-  );
-
-  await prisma.$transaction(updates);
+  // Two-phase update to avoid unique constraint violations during position swaps
+  await prisma.$transaction(async (tx) => {
+    for (let i = 0; i < columnIds.length; i++) {
+      await tx.column.update({
+        where: { id: columnIds[i] },
+        data: { position: -(i + 1) },
+      });
+    }
+    for (let i = 0; i < columnIds.length; i++) {
+      await tx.column.update({
+        where: { id: columnIds[i] },
+        data: { position: i },
+      });
+    }
+  });
 
   return prisma.column.findMany({
     where: { boardId },
