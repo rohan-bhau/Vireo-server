@@ -14,8 +14,8 @@ router.delete("/:boardId", requireBoardMember, requireWorkspaceRole("ADMIN"), bo
 router.put("/:boardId/config", requireBoardMember, requireWorkspaceRole("ADMIN"), boardController.updateConfig);
 
 router.post("/:boardId/columns", requireBoardMember, requireWorkspaceRole("ADMIN"), boardController.addColumn);
+router.put("/:boardId/columns/reorder", requireBoardMember, requireWorkspaceRole("ADMIN"), boardController.reorderColumns);
 router.put("/:boardId/columns/:columnId", requireBoardMember, requireWorkspaceRole("ADMIN"), boardController.updateColumn);
 router.delete("/:boardId/columns/:columnId", requireBoardMember, requireWorkspaceRole("ADMIN"), boardController.removeColumn);
-router.put("/:boardId/columns/reorder", requireBoardMember, requireWorkspaceRole("ADMIN"), boardController.reorderColumns);
 
 export default router;

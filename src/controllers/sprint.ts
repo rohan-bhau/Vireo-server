@@ -66,7 +66,8 @@ export async function start(req: AuthRequest, res: Response, next: NextFunction)
 export async function complete(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const sprintId = req.params.sprintId as string;
-    const sprint = await sprintService.completeSprint(sprintId);
+    const { goalCompleted, moveToSprintId } = req.body;
+    const sprint = await sprintService.completeSprint(sprintId, { goalCompleted, moveToSprintId });
     res.status(200).json({ status: "success", data: { sprint } });
   } catch (error) {
     next(error);

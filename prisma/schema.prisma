@@ -139,17 +139,18 @@ model Column {
 }
 
 model Sprint {
-  id        String        @id @default(uuid())
-  name      String
-  goal      String?
-  projectId String
-  status    SprintStatus  @default(PLANNING)
-  startDate DateTime?
-  endDate   DateTime?
-  createdAt DateTime      @default(now())
-  updatedAt DateTime      @updatedAt
+  id            String        @id @default(uuid())
+  name          String
+  goal          String?
+  goalCompleted Boolean?
+  projectId     String
+  status        SprintStatus  @default(PLANNING)
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
 
-  project   Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@map("sprints")
 }
