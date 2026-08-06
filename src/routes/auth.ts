@@ -10,6 +10,8 @@ router.post("/refresh", authController.refresh);
 router.post("/logout", authenticate, authController.logout);
 router.post("/verify-email", authController.verifyEmail);
 router.post("/resend-otp", authController.resendOtp);
+router.get("/onboarding", authenticate, authController.getOnboarding);
+router.put("/onboarding", authenticate, authController.updateOnboarding);
 router.post("/onboarding", authenticate, authController.onboarding);
 router.post("/forgot-password", authController.forgotPassword);
 router.post("/reset-password", authController.resetPassword);

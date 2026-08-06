@@ -98,15 +98,44 @@ export async function resendOtp(
   }
 }
 
+export async function getOnboarding(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const result = await authService.getOnboarding(req.userId!);
+    res.status(200).json({ status: "success", data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateOnboarding(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const { role, companySize, useCase, template, workspaceName, step, completedAt } = req.body;
+    const result = await authService.updateOnboarding(req.userId!, {
+      role, companySize, useCase, template, workspaceName, step, completedAt,
+    });
+    res.status(200).json({ status: "success", data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function onboarding(
   req: AuthRequest,
   res: Response,
   next: NextFunction
 ) {
   try {
-    const { role, teamSize, useCase, selectedTemplate } = req.body;
+    const { role, companySize, useCase, selectedTemplate: template, workspaceName } = req.body;
     const result = await authService.submitOnboarding(req.userId!, {
-      role, teamSize, useCase, selectedTemplate,
+      role, companySize, useCase, template, workspaceName,
     });
     res.status(200).json({ status: "success", data: result });
   } catch (error) {
