@@ -2,19 +2,25 @@ import mongoose from "mongoose";
 import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
 import User from "../models/mongoose/User";
+import * as projectService from "./project";
+import type { ProjectTemplate } from "@prisma/client";
 
 interface CreateWorkspaceInput {
   name: string;
   description?: string;
   ownerId: string;
+  template?: ProjectTemplate;
 }
 
 export async function createWorkspace(input: CreateWorkspaceInput) {
+  const template = input.template || "KANBAN";
+
   const workspace = await prisma.workspace.create({
     data: {
       name: input.name,
       description: input.description,
       ownerId: input.ownerId,
+      template,
       members: {
         create: {
           userId: input.ownerId,
@@ -27,6 +33,18 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
       members: true,
     },
   });
+
+  try {
+    await projectService.seedDefaultProject(
+      workspace.id,
+      input.ownerId,
+      input.name,
+      template
+    );
+  } catch (err) {
+    // Non-fatal: board seeding failure should not block workspace creation.
+    console.error("Failed to seed default project:", err);
+  }
 
   return workspace;
 }
@@ -59,14 +77,48 @@ export async function getUserWorkspaces(userId: string) {
 
 export async function updateWorkspace(
   workspaceId: string,
-  data: { name?: string; description?: string }
+  data: { name?: string; description?: string; template?: ProjectTemplate }
 ) {
+  const updateData: { name?: string; description?: string; template?: ProjectTemplate } = {};
+  if (data.name !== undefined) updateData.name = data.name;
+  if (data.description !== undefined) updateData.description = data.description;
+  if (data.template !== undefined) updateData.template = data.template;
+
   const workspace = await prisma.workspace.update({
     where: { id: workspaceId },
-    data,
+    data: updateData,
   });
 
   return workspace;
+}
+
+export async function getOrSeedDefaultProject(workspaceId: string) {
+  const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+  if (!workspace) {
+    throw new AppError("Workspace not found", 404);
+  }
+
+  const existing = await prisma.project.findFirst({
+    where: { workspaceId },
+    orderBy: { createdAt: "asc" },
+    include: { boards: { include: { columns: { orderBy: { position: "asc" } } } } },
+  });
+
+  if (existing) {
+    return existing;
+  }
+
+  const seeded = await projectService.seedDefaultProject(
+    workspaceId,
+    workspace.ownerId,
+    workspace.name,
+    (workspace.template || "KANBAN") as ProjectTemplate
+  );
+
+  return prisma.project.findFirst({
+    where: { id: seeded.id },
+    include: { boards: { include: { columns: { orderBy: { position: "asc" } } } } },
+  });
 }
 
 export async function deleteWorkspace(workspaceId: string) {

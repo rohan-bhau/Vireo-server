@@ -14,9 +14,60 @@ interface CreateProjectInput {
   isTeamManaged?: boolean;
 }
 
+export function generateProjectKey(name: string): string {
+  const key = name
+    .replace(/[^a-zA-Z0-9\s]/g, "")
+    .split(/\s+/)
+    .map((w) => w.charAt(0).toUpperCase())
+    .join("")
+    .slice(0, 4) || "PROJ";
+  return key.toUpperCase();
+}
+
+export function getTemplateDefaults(template: ProjectTemplate) {
+  return templateDefaults[template];
+}
+
+export async function seedDefaultProject(
+  workspaceId: string,
+  ownerId: string,
+  name: string,
+  template: ProjectTemplate
+) {
+  const project = await prisma.project.create({
+    data: {
+      name,
+      key: generateProjectKey(name),
+      template,
+      workspaceId,
+      ownerId,
+      isTeamManaged: true,
+    },
+  });
+
+  const defaults = templateDefaults[template];
+
+  const board = await prisma.board.create({
+    data: {
+      name: `${project.name} Board`,
+      type: defaults.boardType,
+      projectId: project.id,
+      columns: {
+        create: defaults.columns.map((col, i) => ({ name: col, position: i })),
+      },
+    },
+    include: { columns: { orderBy: { position: "asc" } } },
+  });
+
+  await permissionService.ensureDefaultProjectRoles(project.id, workspaceId, ownerId);
+  await permissionService.ensureDefaultPermissionScheme(workspaceId, ownerId);
+
+  return { ...project, board };
+}
+
 const templateDefaults: Record<ProjectTemplate, { boardType: BoardType; columns: string[]; hasBacklog: boolean; hasSprints: boolean; hasTimeline: boolean }> = {
   SCRUM: { boardType: "SCRUM", columns: ["To Do", "In Progress", "In Review", "Done"], hasBacklog: true, hasSprints: true, hasTimeline: false },
-  KANBAN: { boardType: "KANBAN", columns: ["To Do", "In Progress", "Done"], hasBacklog: false, hasSprints: false, hasTimeline: false },
+  KANBAN: { boardType: "KANBAN", columns: ["To Do", "In Progress", "In Review", "Done"], hasBacklog: false, hasSprints: false, hasTimeline: false },
   BUG_TRACKING: { boardType: "SCRUM", columns: ["To Do", "In Progress", "In Review", "Done"], hasBacklog: true, hasSprints: true, hasTimeline: false },
   PROJECT_MANAGEMENT: { boardType: "KANBAN", columns: ["To Do", "In Progress", "Done"], hasBacklog: false, hasSprints: false, hasTimeline: true },
   DEVOPS: { boardType: "SCRUM", columns: ["To Do", "In Progress", "In Review", "Done"], hasBacklog: true, hasSprints: true, hasTimeline: false },

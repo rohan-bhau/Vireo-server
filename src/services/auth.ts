@@ -260,6 +260,7 @@ export async function submitOnboarding(
     workspace = await workspaceService.createWorkspace({
       name: data.workspaceName?.trim() || `${user.name}'s Workspace`,
       ownerId: userId,
+      template: (data.template as any) || "KANBAN",
     });
   } else {
     workspace = existingWorkspaces[0];

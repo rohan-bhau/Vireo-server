@@ -1,6 +1,7 @@
 import { Response, NextFunction } from "express";
 import { AuthRequest } from "../middleware/auth";
 import * as boardService from "../services/board";
+import { getIO } from "../socket";
 
 export async function getById(
   req: AuthRequest,
@@ -142,6 +143,10 @@ export async function reorderColumns(
     const boardId = req.params.boardId as string;
     const { columnIds } = req.body;
     const columns = await boardService.reorderColumns(boardId, columnIds);
+    getIO()?.to(`board:${boardId}`).emit("board-columns-reordered", {
+      boardId,
+      columns: columns.map((c) => ({ id: c.id, name: c.name, position: c.position, wipLimit: (c as any).wipLimit ?? null })),
+    });
     res.status(200).json({ status: "success", data: { columns } });
   } catch (error) {
     next(error);
