@@ -23,6 +23,16 @@ export interface IProjectNotificationOverride {
   onSprintEvents: boolean;
 }
 
+export interface IOnboarding {
+  role?: string;
+  companySize?: string;
+  useCase?: string;
+  template?: string;
+  workspaceName?: string;
+  step: string;
+  completedAt?: Date;
+}
+
 export interface IUser extends Document {
   name: string;
   email: string;
@@ -37,12 +47,26 @@ export interface IUser extends Document {
   resetPasswordExpires?: Date;
   isEmailVerified: boolean;
   lastSeen?: Date;
+  onboarding?: IOnboarding;
   notificationPreferences?: INotificationPreferences;
   projectNotificationOverrides?: IProjectNotificationOverride[];
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
 }
+
+const onboardingSchema = new Schema<IOnboarding>(
+  {
+    role: { type: String },
+    companySize: { type: String },
+    useCase: { type: String },
+    template: { type: String },
+    workspaceName: { type: String },
+    step: { type: String, default: "role" },
+    completedAt: { type: Date },
+  },
+  { _id: false }
+);
 
 const notificationPreferencesSchema = new Schema<INotificationPreferences>(
   {
@@ -115,6 +139,9 @@ const userSchema = new Schema<IUser>(
     },
     lastSeen: {
       type: Date,
+    },
+    onboarding: {
+      type: onboardingSchema,
     },
     notificationPreferences: {
       type: notificationPreferencesSchema,

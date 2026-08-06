@@ -187,13 +187,24 @@ export async function updateProfile(
   return sanitizeUser(user);
 }
 
-export async function submitOnboarding(
+export async function getOnboarding(userId: string) {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+  return user.onboarding || null;
+}
+
+export async function updateOnboarding(
   userId: string,
   data: {
-    role: string;
-    teamSize: string;
-    useCase: string;
-    selectedTemplate?: string;
+    role?: string;
+    companySize?: string;
+    useCase?: string;
+    template?: string;
+    workspaceName?: string;
+    step?: string;
+    completedAt?: Date;
   }
 ) {
   const user = await User.findById(userId);
@@ -201,11 +212,53 @@ export async function submitOnboarding(
     throw new AppError("User not found", 404);
   }
 
+  const current = user.onboarding ?? { step: "role" };
+  user.onboarding = {
+    ...current,
+    role: data.role ?? current.role,
+    companySize: data.companySize ?? current.companySize,
+    useCase: data.useCase ?? current.useCase,
+    template: data.template ?? current.template,
+    workspaceName: data.workspaceName ?? current.workspaceName,
+    step: data.step ?? current.step,
+    ...(data.completedAt ? { completedAt: data.completedAt } : {}),
+  };
+  await user.save();
+
+  return user.onboarding;
+}
+
+export async function submitOnboarding(
+  userId: string,
+  data: {
+    role: string;
+    companySize: string;
+    useCase: string;
+    template?: string;
+    workspaceName?: string;
+  }
+) {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw new AppError("User not found", 404);
+  }
+
+  user.onboarding = {
+    role: data.role,
+    companySize: data.companySize,
+    useCase: data.useCase,
+    template: data.template,
+    workspaceName: data.workspaceName,
+    step: "complete",
+    completedAt: new Date(),
+  };
+  await user.save();
+
   const existingWorkspaces = await workspaceService.getUserWorkspaces(userId);
   let workspace;
   if (existingWorkspaces.length === 0) {
     workspace = await workspaceService.createWorkspace({
-      name: `${user.name}'s Workspace`,
+      name: data.workspaceName?.trim() || `${user.name}'s Workspace`,
       description: `Personal workspace for ${user.name}`,
       ownerId: userId,
     });
@@ -215,7 +268,7 @@ export async function submitOnboarding(
 
   return {
     message: "Onboarding completed",
-    redirect: data.selectedTemplate === "blank" ? "/dashboard" : `/w/${workspace.id}`,
+    redirect: `/dashboard?workspace=${workspace.id}`,
   };
 }
 
