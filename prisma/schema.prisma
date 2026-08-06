@@ -29,6 +29,7 @@ model Workspace {
   name        String
   description String?
   ownerId     String
+  template    ProjectTemplate   @default(KANBAN)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
 

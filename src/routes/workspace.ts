@@ -30,6 +30,12 @@ router.delete(
 );
 
 router.get(
+  "/:workspaceId/default-project",
+  requireWorkspaceMember,
+  workspaceController.ensureDefaultProject
+);
+
+router.get(
   "/:workspaceId/members",
   requireWorkspaceMember,
   workspaceController.getMembers

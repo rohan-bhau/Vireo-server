@@ -8,11 +8,12 @@ export async function create(
   next: NextFunction
 ) {
   try {
-    const { name, description } = req.body;
+    const { name, description, template } = req.body;
     const workspace = await workspaceService.createWorkspace({
       name,
       description,
       ownerId: req.userId!,
+      template,
     });
     res.status(201).json({ status: "success", data: { workspace } });
   } catch (error) {
@@ -47,6 +48,20 @@ export async function getMyWorkspaces(
   }
 }
 
+export async function ensureDefaultProject(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const workspaceId = req.params.workspaceId as string;
+    const project = await workspaceService.getOrSeedDefaultProject(workspaceId);
+    res.status(200).json({ status: "success", data: { project } });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function update(
   req: AuthRequest,
   res: Response,
@@ -54,10 +69,10 @@ export async function update(
 ) {
   try {
     const workspaceId = req.params.workspaceId as string;
-    const { name, description } = req.body;
+    const { name, description, template } = req.body;
     const workspace = await workspaceService.updateWorkspace(
       workspaceId,
-      { name, description }
+      { name, description, template }
     );
     res.status(200).json({ status: "success", data: { workspace } });
   } catch (error) {
