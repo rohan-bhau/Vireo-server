@@ -259,7 +259,6 @@ export async function submitOnboarding(
   if (existingWorkspaces.length === 0) {
     workspace = await workspaceService.createWorkspace({
       name: data.workspaceName?.trim() || `${user.name}'s Workspace`,
-      description: `Personal workspace for ${user.name}`,
       ownerId: userId,
     });
   } else {
