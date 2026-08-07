@@ -2,6 +2,7 @@ import mongoose from "mongoose";
 import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
 import User from "../models/mongoose/User";
+import { notifyMemberAdded, notifyRoleChanged } from "./notification";
 import * as projectService from "./project";
 import type { ProjectTemplate } from "@prisma/client";
 
@@ -156,13 +157,23 @@ export async function getWorkspaceMembers(workspaceId: string) {
   }));
 }
 
-export async function removeMember(workspaceId: string, userId: string) {
+export async function removeMember(workspaceId: string, userId: string, actorId?: string) {
   const member = await prisma.workspaceMember.findUnique({
     where: { workspaceId_userId: { workspaceId, userId } },
   });
 
   if (!member) {
     throw new AppError("Member not found", 404);
+  }
+
+  const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+
+  if (workspace && userId === workspace.ownerId) {
+    throw new AppError("You cannot remove the workspace owner", 400);
+  }
+
+  if (workspace && actorId && member.role === "ADMIN" && actorId !== workspace.ownerId) {
+    throw new AppError("Only the workspace owner can remove admins", 403);
   }
 
   await prisma.workspaceMember.delete({
@@ -173,7 +184,8 @@ export async function removeMember(workspaceId: string, userId: string) {
 export async function updateMemberRole(
   workspaceId: string,
   userId: string,
-  role: "ADMIN" | "MEMBER"
+  role: "ADMIN" | "MEMBER" | "VIEWER",
+  actorId: string
 ) {
   const member = await prisma.workspaceMember.findUnique({
     where: { workspaceId_userId: { workspaceId, userId } },
@@ -183,10 +195,20 @@ export async function updateMemberRole(
     throw new AppError("Member not found", 404);
   }
 
+  const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
+
+  if (workspace && userId === workspace.ownerId) {
+    throw new AppError("You cannot change the workspace owner's role", 400);
+  }
+
   const updated = await prisma.workspaceMember.update({
     where: { workspaceId_userId: { workspaceId, userId } },
     data: { role },
   });
+
+  if (updated.role === role && role !== member.role) {
+    await notifyRoleChanged(userId, actorId, workspaceId, role);
+  }
 
   return updated;
 }

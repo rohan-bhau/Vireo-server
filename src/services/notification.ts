@@ -8,8 +8,8 @@ import { getIO } from "../socket";
 export async function createNotification(data: {
   userId: string;
   type: NotificationType;
-  taskId: string;
-  taskTitle: string;
+  taskId?: string;
+  taskTitle?: string;
   actorId: string;
   message: string;
   projectId?: string;
@@ -96,11 +96,11 @@ export async function getUnreadCount(userId: string): Promise<number> {
 async function dispatchNotification(
   userId: string,
   type: NotificationType,
-  taskId: string,
-  taskTitle: string,
+  taskId: string | undefined,
+  taskTitle: string | undefined,
   actorId: string,
   message: string,
-  options?: { projectId?: string; workspaceId?: string; sendEmail?: boolean }
+  options?: { projectId?: string; workspaceId?: string; sendEmail?: boolean; actorName?: string }
 ) {
   if (userId === actorId) return;
 
@@ -120,7 +120,7 @@ async function dispatchNotification(
     if (user && user.notificationPreferences?.email !== false) {
       await sendNotificationEmail(user.email, user.name, {
         type,
-        actorName: "",
+        actorName: options?.actorName || "",
         taskId,
         taskTitle,
         message,
@@ -312,4 +312,76 @@ export async function notifyIssueDeleted(
       { projectId, workspaceId, sendEmail: recipients.sendEmail }
     );
   }
+}
+
+export async function notifyMemberAdded(
+  targetUserId: string,
+  actorId: string,
+  workspaceId: string,
+  workspaceName: string
+) {
+  await dispatchNotification(
+    targetUserId,
+    "member_added",
+    undefined,
+    workspaceName,
+    actorId,
+    `added you to the ${workspaceName} workspace`,
+    { workspaceId, sendEmail: true }
+  );
+}
+
+export async function notifyRoleChanged(
+  targetUserId: string,
+  actorId: string,
+  workspaceId: string,
+  newRole: string
+) {
+  await dispatchNotification(
+    targetUserId,
+    "role_changed",
+    undefined,
+    newRole,
+    actorId,
+    `set your workspace role to ${newRole}`,
+    { workspaceId, sendEmail: true }
+  );
+}
+
+export async function notifyDueDate(
+  targetUserId: string,
+  taskId: string,
+  taskTitle: string,
+  workspaceId: string | undefined,
+  projectId: string | undefined,
+  daysLeft: number
+) {
+  await dispatchNotification(
+    targetUserId,
+    "due_date",
+    taskId,
+    taskTitle,
+    "system",
+    `${taskId} is due ${daysLeft <= 0 ? "today" : `in ${daysLeft} day${daysLeft === 1 ? "" : "s"}`}`,
+    { projectId, workspaceId, sendEmail: true }
+  );
+}
+
+export async function notifyIssueCompleted(
+  targetUserId: string,
+  taskId: string,
+  taskTitle: string,
+  actorId: string,
+  workspaceId?: string,
+  projectId?: string
+) {
+  await dispatchNotification(
+    targetUserId,
+    "issue_completed",
+    taskId,
+    taskTitle,
+    actorId,
+    `completed ${taskId}`,
+    { projectId, workspaceId, sendEmail: true }
+  );
 }

@@ -310,6 +310,10 @@ export async function checkProjectPermission(
   if (!workspaceMember) throw new AppError("Not a workspace member", 403);
   if (workspaceMember.role === "ADMIN") return true;
 
+  if (workspaceMember.role === "VIEWER") {
+    return permissions.every((p) => p === "ADD_COMMENTS");
+  }
+
   const projectRoles = await ProjectRole.find({
     projectId,
     "members.userId": userId,

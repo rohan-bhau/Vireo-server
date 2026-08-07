@@ -8,6 +8,7 @@ import {
   notifyIssueCreated,
   notifyIssueUpdated,
   notifyIssueDeleted,
+  notifyIssueCompleted,
 } from "./notification";
 import { evaluateTriggers } from "./automation";
 import { checkProjectPermission, checkIssueSecurityAccess } from "./permission";
@@ -165,6 +166,15 @@ export async function getWorkspaceTasks(workspaceId: string) {
   return Task.find({ workspaceId }).sort({ updatedAt: -1 });
 }
 
+export async function getSubtasksByParent(taskKey: string) {
+  return Task.find({ parentTask: taskKey }).sort({ createdAt: 1 });
+}
+
+export async function hasOpenSubtasks(taskKey: string): Promise<boolean> {
+  const count = await Task.countDocuments({ parentTask: taskKey, status: { $ne: "done" } });
+  return count > 0;
+}
+
 interface UpdateTaskInput {
   title?: string;
   description?: string;
@@ -221,6 +231,13 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
     await notifyStatusChanged(taskKey, task.title, input.status, task.assignee, actorId);
   }
 
+  if (input.status === "done" && oldStatus !== "done") {
+    const openSubtasks = await hasOpenSubtasks(taskKey);
+    if (openSubtasks) {
+      throw new AppError("Cannot mark as Done: all subtasks must be completed first.", 400);
+    }
+  }
+
   if (input.title !== undefined) task.title = input.title;
   if (input.description !== undefined) task.description = input.description;
   if (input.type !== undefined) task.type = input.type;
@@ -238,6 +255,17 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
   if (input.sprintId !== undefined) task.sprintId = input.sprintId;
 
   const updated = await task.save();
+
+  if (input.status === "done" && oldStatus !== "done") {
+    await notifyIssueCompleted(
+      task.reporter || task.assignee || "",
+      taskKey,
+      updated.title,
+      actorId,
+      task.workspaceId,
+      task.projectId
+    ).catch(() => {});
+  }
 
   for (const change of changes) {
     const action = change.field === "status" ? "status_changed"
@@ -331,10 +359,30 @@ export async function moveTask(taskKey: string, columnId: string, position: numb
   const column = await prisma.column.findUnique({ where: { id: columnId } });
 
   const oldColumnId = task.columnId;
+  const newStatus = column ? mapColumnToStatus(column.name) : mapColumnToStatus(columnId);
+
+  if (newStatus === "done" && oldColumnId !== columnId) {
+    const openSubtasks = await hasOpenSubtasks(taskKey);
+    if (openSubtasks) {
+      throw new AppError("Cannot move to Done: all subtasks must be completed first.", 400);
+    }
+  }
+
   task.columnId = columnId;
   task.position = position;
-  task.status = column ? mapColumnToStatus(column.name) : mapColumnToStatus(columnId);
+  task.status = newStatus;
   await task.save();
+
+  if (newStatus === "done" && oldColumnId !== columnId) {
+    await notifyIssueCompleted(
+      task.reporter || task.assignee || "",
+      taskKey,
+      task.title,
+      actorId,
+      task.workspaceId,
+      task.projectId
+    ).catch(() => {});
+  }
 
   if (oldColumnId !== columnId) {
     await ActivityLog.create({

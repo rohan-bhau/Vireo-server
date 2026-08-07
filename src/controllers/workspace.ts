@@ -116,7 +116,7 @@ export async function removeMember(
   try {
     const workspaceId = req.params.workspaceId as string;
     const userId = req.params.userId as string;
-    await workspaceService.removeMember(workspaceId, userId);
+    await workspaceService.removeMember(workspaceId, userId, req.userId);
     res.status(200).json({ status: "success", message: "Member removed" });
   } catch (error) {
     next(error);
@@ -132,10 +132,15 @@ export async function updateMemberRole(
     const workspaceId = req.params.workspaceId as string;
     const userId = req.params.userId as string;
     const { role } = req.body;
+    if (!["ADMIN", "MEMBER", "VIEWER"].includes(role)) {
+      res.status(400).json({ status: "fail", message: "Invalid role" });
+      return;
+    }
     const member = await workspaceService.updateMemberRole(
       workspaceId,
       userId,
-      role
+      role,
+      req.userId!
     );
     res.status(200).json({ status: "success", data: { member } });
   } catch (error) {

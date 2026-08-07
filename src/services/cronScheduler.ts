@@ -1,5 +1,7 @@
 import * as cron from "node-cron";
 import { getScheduledRules, evaluateTriggers } from "./automation";
+import Task from "../models/mongoose/Task";
+import { notifyDueDate } from "./notification";
 
 const scheduledJobs = new Map<string, cron.ScheduledTask>();
 
@@ -16,7 +18,47 @@ export async function initCronScheduler() {
     }
   }
 
+  scheduleDueDateReminders();
+
   console.log(`[CronScheduler] Initialized ${scheduledJobs.size} scheduled rules`);
+}
+
+function scheduleDueDateReminders() {
+  cron.schedule("0 * * * *", async () => {
+    try {
+      const now = new Date();
+      const dayMs = 24 * 60 * 60 * 1000;
+
+      const tasks = await Task.find({
+        dueDate: { $ne: null },
+        status: { $ne: "done" },
+      }).lean();
+
+      for (const task of tasks) {
+        if (!task.dueDate) continue;
+        const due = new Date(task.dueDate).getTime();
+        const diff = due - now.getTime();
+        if (diff < 0 || diff > dayMs) continue;
+
+        const daysLeft = Math.ceil(diff / dayMs);
+        const assignee = task.assignee;
+        if (assignee) {
+          await notifyDueDate(
+            assignee,
+            task.taskKey,
+            task.title,
+            task.workspaceId as string,
+            task.projectId as string,
+            daysLeft
+          );
+        }
+      }
+    } catch (error) {
+      console.error("[CronScheduler] Due-date reminder sweep failed:", error);
+    }
+  });
+
+  console.log("[CronScheduler] Due-date reminder sweep scheduled (hourly)");
 }
 
 export function scheduleRule(

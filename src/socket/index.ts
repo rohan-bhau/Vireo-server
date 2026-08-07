@@ -72,6 +72,14 @@ export function createSocketServer(httpServer: HTTPServer) {
       socket.leave(`board:${boardId}`);
     });
 
+    socket.on("join-workspace", async (workspaceId: string) => {
+      socket.join(`workspace:${workspaceId}`);
+    });
+
+    socket.on("leave-workspace", async (workspaceId: string) => {
+      socket.leave(`workspace:${workspaceId}`);
+    });
+
     socket.on("send-message", async (data: {
       conversationId: string;
       content: string;

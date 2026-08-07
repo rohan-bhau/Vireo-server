@@ -15,6 +15,7 @@ enum SprintStatus {
 enum WorkspaceRole {
   ADMIN
   MEMBER
+  VIEWER
 }
 
 enum InvitationStatus {
