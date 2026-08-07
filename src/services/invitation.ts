@@ -3,12 +3,13 @@ import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
 import User from "../models/mongoose/User";
 import { sendInvitationEmail, sendWelcomeEmail } from "./email";
+import { notifyMemberAdded } from "./notification";
 
 interface CreateInvitationInput {
   workspaceId: string;
   inviterId: string;
   inviteeEmail: string;
-  role: "ADMIN" | "MEMBER";
+  role?: "ADMIN" | "MEMBER" | "VIEWER";
   message?: string;
 }
 
@@ -52,7 +53,7 @@ export async function createInvitation(input: CreateInvitationInput) {
       workspaceId: input.workspaceId,
       inviterId: input.inviterId,
       inviteeEmail: input.inviteeEmail,
-      role: input.role,
+      role: input.role || "VIEWER",
       message: input.message,
       token,
       expiresAt,
@@ -165,6 +166,13 @@ export async function acceptInvitation(token: string, userId: string) {
       data: { status: "ACCEPTED" },
     }),
   ]);
+
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: invitation.workspaceId },
+  });
+  if (workspace) {
+    await notifyMemberAdded(userId, invitation.inviterId, invitation.workspaceId, workspace.name);
+  }
 }
 
 export async function declineInvitation(token: string) {

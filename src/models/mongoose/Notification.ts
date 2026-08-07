@@ -9,13 +9,18 @@ export type NotificationType =
   | "issue_updated"
   | "issue_deleted"
   | "sprint_started"
-  | "sprint_completed";
+  | "sprint_completed"
+  | "member_added"
+  | "role_changed"
+  | "invited"
+  | "due_date"
+  | "issue_completed";
 
 export interface INotification {
   userId: string;
   type: NotificationType;
-  taskId: string;
-  taskTitle: string;
+  taskId?: string;
+  taskTitle?: string;
   actorId: string;
   actorName: string;
   message: string;
@@ -45,16 +50,21 @@ const notificationSchema = new Schema<INotification>(
         "issue_deleted",
         "sprint_started",
         "sprint_completed",
+        "member_added",
+        "role_changed",
+        "invited",
+        "due_date",
+        "issue_completed",
       ],
       required: true,
     },
     taskId: {
       type: String,
-      required: true,
+      default: null,
     },
     taskTitle: {
       type: String,
-      required: true,
+      default: null,
     },
     actorId: {
       type: String,

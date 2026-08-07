@@ -10,11 +10,15 @@ export async function create(
   try {
     const { inviteeEmail, role, message } = req.body;
     const workspaceId = req.params.workspaceId as string;
+    if (role && !["ADMIN", "MEMBER", "VIEWER"].includes(role)) {
+      res.status(400).json({ status: "fail", message: "Invalid role" });
+      return;
+    }
     const invitation = await invitationService.createInvitation({
       workspaceId,
       inviterId: req.userId!,
       inviteeEmail,
-      role: role || "MEMBER",
+      role,
       message,
     });
     res.status(201).json({ status: "success", data: { invitation } });

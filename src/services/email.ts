@@ -112,21 +112,23 @@ export async function sendNotificationEmail(
   data: {
     type: string;
     actorName: string;
-    taskId: string;
-    taskTitle: string;
+    taskId?: string;
+    taskTitle?: string;
     message: string;
     workspaceId: string;
   }
 ) {
-  const viewUrl = `${config.clientUrl}/task/${data.taskId}`;
+  const viewUrl = data.taskId
+    ? `${config.clientUrl}/task/${data.taskId}`
+    : `${config.clientUrl}/w/${data.workspaceId}`;
   const manageUrl = `${config.clientUrl}/profile/notifications`;
 
   const template = loadTemplate("notification-email.html");
   const html = compile(template, {
     userName,
     actorName: data.actorName,
-    taskId: data.taskId,
-    taskTitle: data.taskTitle,
+    taskId: data.taskId || "",
+    taskTitle: data.taskTitle || "",
     message: data.message,
     viewUrl,
     manageUrl,
@@ -137,7 +139,7 @@ export async function sendNotificationEmail(
   await transporter.sendMail({
     from: sender,
     to,
-    subject: `[${data.taskId}] ${data.message}`,
+    subject: data.taskId ? `[${data.taskId}] ${data.message}` : data.message,
     html,
   });
 }
