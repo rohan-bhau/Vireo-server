@@ -122,13 +122,17 @@ export async function getOrSeedDefaultProject(workspaceId: string) {
   });
 }
 
-export async function deleteWorkspace(workspaceId: string) {
+export async function deleteWorkspace(workspaceId: string, userId?: string) {
   const workspace = await prisma.workspace.findUnique({
     where: { id: workspaceId },
   });
 
   if (!workspace) {
     throw new AppError("Workspace not found", 404);
+  }
+
+  if (userId && workspace.ownerId !== userId) {
+    throw new AppError("Only the workspace owner can delete this workspace", 403);
   }
 
   await prisma.workspace.delete({ where: { id: workspaceId } });
