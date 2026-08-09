@@ -57,6 +57,22 @@ export async function getProjectSprints(projectId: string) {
   });
 }
 
+export async function getWorkspaceSprints(workspaceId: string) {
+  const projects = await prisma.project.findMany({
+    where: { workspaceId },
+    select: { id: true },
+  });
+
+  const projectIds = projects.map((p) => p.id);
+  if (projectIds.length === 0) return [];
+
+  return prisma.sprint.findMany({
+    where: { projectId: { in: projectIds } },
+    include: { project: { select: { id: true, name: true, key: true } } },
+    orderBy: { createdAt: "desc" },
+  });
+}
+
 export async function updateSprint(sprintId: string, input: UpdateSprintInput) {
   const sprint = await prisma.sprint.findUnique({
     where: { id: sprintId },

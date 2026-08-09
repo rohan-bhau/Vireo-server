@@ -56,6 +56,23 @@ function requireAdmin(req: AuthRequest, _res: Response, next: NextFunction) {
   next();
 }
 
+async function requireWorkspaceMemberForWorkspace(req: AuthRequest, _res: Response, next: NextFunction) {
+  try {
+    const workspaceId = req.params.workspaceId as string;
+    if (!workspaceId) throw new AppError("Workspace ID is required", 400);
+
+    const member = await prisma.workspaceMember.findUnique({
+      where: { workspaceId_userId: { workspaceId, userId: req.userId! } },
+    });
+    if (!member) throw new AppError("You are not a member of this workspace", 403);
+    req.workspaceRole = member.role;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
+router.get("/workspace/:workspaceId", requireWorkspaceMemberForWorkspace, sprintController.getByWorkspace);
 router.get("/project/:projectId", requireProjectMember, sprintController.getByProject);
 router.get("/project/:projectId/backlog", requireProjectMember, sprintController.getBacklog);
 

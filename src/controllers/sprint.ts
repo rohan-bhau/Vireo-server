@@ -32,6 +32,16 @@ export async function getByProject(req: AuthRequest, res: Response, next: NextFu
   }
 }
 
+export async function getByWorkspace(req: AuthRequest, res: Response, next: NextFunction) {
+  try {
+    const workspaceId = req.params.workspaceId as string;
+    const sprints = await sprintService.getWorkspaceSprints(workspaceId);
+    res.status(200).json({ status: "success", data: { sprints } });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function update(req: AuthRequest, res: Response, next: NextFunction) {
   try {
     const sprintId = req.params.sprintId as string;
