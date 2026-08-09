@@ -4,6 +4,7 @@ import Task from "../models/mongoose/Task";
 import * as notificationSchemeService from "./notificationScheme";
 import { sendNotificationEmail } from "./email";
 import { getIO } from "../socket";
+import { prisma } from "../config/prisma";
 
 export async function createNotification(data: {
   userId: string;
@@ -176,29 +177,32 @@ export async function notifyMentioned(
   actorId: string,
   options?: { projectId?: string; workspaceId?: string }
 ) {
-  const mentionPattern = /@(\w+)/g;
-  const matches = content.matchAll(mentionPattern);
-  const mentionedNames = new Set<string>();
-  for (const match of matches) {
-    mentionedNames.add(match[1].toLowerCase());
-  }
-  if (mentionedNames.size === 0) return;
+  if (!options?.workspaceId) return;
 
-  const allUsers = await User.find({});
-  for (const user of allUsers) {
-    const nameLower = user.name.toLowerCase();
-    const matched = Array.from(mentionedNames).some((n) => nameLower.startsWith(n) || nameLower.includes(n));
-    if (matched && user._id.toString() !== actorId) {
-      await dispatchNotification(
-        user._id.toString(),
-        "mentioned",
-        taskId,
-        taskTitle,
-        actorId,
-        `mentioned you in ${taskId}`,
-        { ...options, sendEmail: true }
-      );
-    }
+  const members = await prisma.workspaceMember.findMany({
+    where: { workspaceId: options.workspaceId },
+    select: { userId: true },
+  });
+  const memberIds = new Set(members.map((m) => m.userId));
+  const users = await User.find({ _id: { $in: Array.from(memberIds) } });
+
+  for (const user of users) {
+    if (user._id.toString() === actorId) continue;
+    const name = user.name;
+    if (!name) continue;
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const pattern = new RegExp(`(^|\\s)@${escaped}(?=\\s|$|[.,!?;:])`, "i");
+    if (!pattern.test(content)) continue;
+
+    await dispatchNotification(
+      user._id.toString(),
+      "mentioned",
+      taskId,
+      taskTitle,
+      actorId,
+      `mentioned you in ${taskId}`,
+      { ...options, sendEmail: true }
+    );
   }
 }
 
