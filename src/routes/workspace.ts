@@ -1,10 +1,13 @@
 import { Router } from "express";
+import multer from "multer";
 import * as workspaceController from "../controllers/workspace";
 import * as invitationController from "../controllers/invitation";
 import { authenticate } from "../middleware/auth";
 import { requireWorkspaceMember, requireWorkspaceRole } from "../middleware/workspace";
 
 const router = Router();
+
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
 
 router.use(authenticate);
 
@@ -22,11 +25,23 @@ router.put(
   requireWorkspaceRole("ADMIN"),
   workspaceController.update
 );
+router.post(
+  "/:workspaceId/avatar",
+  requireWorkspaceMember,
+  requireWorkspaceRole("ADMIN"),
+  upload.single("avatar"),
+  workspaceController.uploadAvatar
+);
 router.delete(
   "/:workspaceId",
   requireWorkspaceMember,
   requireWorkspaceRole("ADMIN"),
   workspaceController.remove
+);
+router.post(
+  "/:workspaceId/transfer",
+  requireWorkspaceMember,
+  workspaceController.transferOwnership
 );
 
 router.get(

@@ -26,6 +26,40 @@ interface CreateWorkspaceInput {
   template?: ProjectTemplate;
 }
 
+const AVATAR_COLORS = [
+  "#2563EB",
+  "#7C3AED",
+  "#DB2777",
+  "#DC2626",
+  "#EA580C",
+  "#059669",
+  "#0D9488",
+  "#4F46E5",
+  "#C026D3",
+  "#6366F1",
+];
+
+export function generateWorkspaceAvatar(name: string): string {
+  const chars = Array.from(name.trim() || "W");
+  const initial = (chars[0] || "W").toUpperCase();
+  let hash = 0;
+  for (const ch of chars) {
+    hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+  }
+  const color = AVATAR_COLORS[hash % AVATAR_COLORS.length];
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="${color}"/><text x="32" y="42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#ffffff" text-anchor="middle">${escapeCharacter(initial)}</text></svg>`;
+  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
+}
+
+function escapeCharacter(ch: string): string {
+  return ch
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 export async function createWorkspace(input: CreateWorkspaceInput) {
   const template = input.template || "KANBAN";
 
@@ -33,6 +67,7 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
     data: {
       name: input.name,
       description: input.description,
+      avatar: generateWorkspaceAvatar(input.name),
       ownerId: input.ownerId,
       template,
       members: {
@@ -120,12 +155,23 @@ export async function getUserWorkspaces(userId: string) {
 
 export async function updateWorkspace(
   workspaceId: string,
-  data: { name?: string; description?: string; template?: ProjectTemplate }
+  data: { name?: string; description?: string; template?: ProjectTemplate; avatar?: string }
 ) {
-  const updateData: { name?: string; description?: string; template?: ProjectTemplate } = {};
+  const updateData: { name?: string; description?: string; template?: ProjectTemplate; avatar?: string } = {};
   if (data.name !== undefined) updateData.name = data.name;
   if (data.description !== undefined) updateData.description = data.description;
   if (data.template !== undefined) updateData.template = data.template;
+  if (data.avatar !== undefined) updateData.avatar = data.avatar;
+
+  if (updateData.name !== undefined && updateData.avatar === undefined) {
+    const existing = await prisma.workspace.findUnique({
+      where: { id: workspaceId },
+      select: { avatar: true },
+    });
+    if (existing?.avatar?.startsWith("data:image/svg+xml")) {
+      updateData.avatar = generateWorkspaceAvatar(updateData.name);
+    }
+  }
 
   const workspace = await prisma.workspace.update({
     where: { id: workspaceId },
@@ -357,4 +403,56 @@ export async function updateMemberRole(
   }
 
   return updated;
+}
+
+export async function transferOwnership(
+  workspaceId: string,
+  newOwnerId: string,
+  actorId: string
+) {
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    include: { members: true },
+  });
+
+  if (!workspace) {
+    throw new AppError("Workspace not found", 404);
+  }
+
+  if (workspace.ownerId !== actorId) {
+    throw new AppError("Only the workspace owner can transfer ownership", 403);
+  }
+
+  if (newOwnerId === workspace.ownerId) {
+    throw new AppError("This member already owns the workspace", 400);
+  }
+
+  const targetMember = workspace.members.find((m) => m.userId === newOwnerId);
+  if (!targetMember) {
+    throw new AppError("The selected user is not a member of this workspace", 400);
+  }
+
+  await prisma.$transaction([
+    prisma.workspace.update({
+      where: { id: workspaceId },
+      data: { ownerId: newOwnerId },
+    }),
+    prisma.workspaceMember.update({
+      where: { workspaceId_userId: { workspaceId, userId: newOwnerId } },
+      data: { role: "ADMIN" },
+    }),
+  ]);
+
+  const io = getIO();
+  if (io) {
+    io.to(`workspace:${workspaceId}`).emit("workspace-owner-changed", {
+      workspaceId,
+      ownerId: newOwnerId,
+    });
+  }
+
+  return prisma.workspace.findUnique({
+    where: { id: workspaceId },
+    include: { members: true },
+  });
 }

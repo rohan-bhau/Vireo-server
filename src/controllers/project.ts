@@ -88,3 +88,27 @@ export async function remove(
     next(error);
   }
 }
+
+export async function updateIssueTypes(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const workspaceId = req.params.workspaceId as string;
+    const projectId = req.params.projectId as string;
+    const { enabledIssueTypes } = req.body;
+    if (!Array.isArray(enabledIssueTypes)) {
+      res.status(400).json({ status: "fail", message: "enabledIssueTypes must be an array" });
+      return;
+    }
+    const project = await projectService.setEnabledIssueTypes(
+      workspaceId,
+      projectId,
+      enabledIssueTypes
+    );
+    res.status(200).json({ status: "success", data: { project } });
+  } catch (error) {
+    next(error);
+  }
+}

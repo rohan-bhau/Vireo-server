@@ -29,6 +29,7 @@ model Workspace {
   id          String            @id @default(uuid())
   name        String
   description String?
+  avatar      String?
   ownerId     String
   template    ProjectTemplate   @default(KANBAN)
   createdAt   DateTime          @default(now())
@@ -99,6 +100,7 @@ model Project {
   isTeamManaged        Boolean         @default(true)
   permissionSchemeId   String?
   issueSecuritySchemeId String?
+  enabledIssueTypes    String[]        @default([])
   createdAt            DateTime        @default(now())
   updatedAt            DateTime        @updatedAt
 

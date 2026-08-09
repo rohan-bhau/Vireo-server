@@ -1,6 +1,39 @@
 import { Response, NextFunction } from "express";
 import { AuthRequest } from "../middleware/auth";
 import * as workspaceService from "../services/workspace";
+import * as cloudinaryService from "../services/cloudinary";
+
+export async function uploadAvatar(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const workspaceId = req.params.workspaceId as string;
+    const file = (req as unknown as { file?: Express.Multer.File }).file;
+    if (!file) {
+      res.status(400).json({ status: "error", message: "No file uploaded" });
+      return;
+    }
+    if (!cloudinaryService.isCloudinaryConfigured()) {
+      res.status(400).json({ status: "error", message: "File uploads are not configured" });
+      return;
+    }
+    if (!file.mimetype.startsWith("image/")) {
+      res.status(400).json({ status: "error", message: "Only image files are allowed" });
+      return;
+    }
+    const { url } = await cloudinaryService.uploadWorkspaceAvatar(
+      file.buffer,
+      file.originalname,
+      workspaceId
+    );
+    const workspace = await workspaceService.updateWorkspace(workspaceId, { avatar: url });
+    res.status(200).json({ status: "success", data: { workspace } });
+  } catch (error) {
+    next(error);
+  }
+}
 
 export async function create(
   req: AuthRequest,
@@ -69,10 +102,10 @@ export async function update(
 ) {
   try {
     const workspaceId = req.params.workspaceId as string;
-    const { name, description, template } = req.body;
+    const { name, description, template, avatar } = req.body;
     const workspace = await workspaceService.updateWorkspace(
       workspaceId,
-      { name, description, template }
+      { name, description, template, avatar }
     );
     res.status(200).json({ status: "success", data: { workspace } });
   } catch (error) {
@@ -143,6 +176,29 @@ export async function updateMemberRole(
       req.userId!
     );
     res.status(200).json({ status: "success", data: { member } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function transferOwnership(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const workspaceId = req.params.workspaceId as string;
+    const { userId } = req.body;
+    if (!userId) {
+      res.status(400).json({ status: "fail", message: "userId is required" });
+      return;
+    }
+    const workspace = await workspaceService.transferOwnership(
+      workspaceId,
+      userId,
+      req.userId!
+    );
+    res.status(200).json({ status: "success", data: { workspace } });
   } catch (error) {
     next(error);
   }

@@ -52,3 +52,29 @@ export async function uploadAttachmentToCloudinary(
   });
   return { url: result.url, publicId: result.public_id };
 }
+
+export async function uploadWorkspaceAvatar(
+  buffer: Buffer,
+  filename: string,
+  workspaceId: string
+): Promise<{ url: string; publicId: string }> {
+  const folder = "vireo-workspace-avatars";
+  const result = await new Promise<{ url: string; public_id: string }>((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(
+      {
+        folder,
+        public_id: `workspace-${workspaceId}-${Date.now()}`,
+        resource_type: "image",
+        use_filename: true,
+        unique_filename: true,
+        overwrite: true,
+      },
+      (error, result) => {
+        if (error || !result) reject(error || new Error("Cloudinary upload failed"));
+        else resolve(result as { url: string; public_id: string });
+      }
+    );
+    stream.end(buffer);
+  });
+  return { url: result.url, publicId: result.public_id };
+}

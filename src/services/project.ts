@@ -191,6 +191,41 @@ export async function updateProject(
   return updated;
 }
 
+export const VALID_ISSUE_TYPES = ["task", "bug", "epic", "story", "subtask"] as const;
+export type IssueType = (typeof VALID_ISSUE_TYPES)[number];
+
+export async function setEnabledIssueTypes(
+  workspaceId: string,
+  projectId: string,
+  enabled: string[]
+) {
+  const project = await prisma.project.findUnique({ where: { id: projectId } });
+
+  if (!project) {
+    throw new AppError("Project not found", 404);
+  }
+
+  if (project.workspaceId !== workspaceId) {
+    throw new AppError("Project not found in this workspace", 404);
+  }
+
+  const valid = VALID_ISSUE_TYPES.filter((t) => enabled.includes(t));
+  if (valid.length === 0) {
+    throw new AppError("At least one issue type must remain enabled", 400);
+  }
+
+  return prisma.project.update({
+    where: { id: projectId },
+    data: { enabledIssueTypes: valid },
+    include: {
+      boards: {
+        include: { columns: { orderBy: { position: "asc" } } },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+}
+
 export async function deleteProject(projectId: string) {
   const project = await prisma.project.findUnique({ where: { id: projectId } });
 

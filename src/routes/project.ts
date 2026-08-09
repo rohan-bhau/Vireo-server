@@ -15,6 +15,13 @@ router.get("/:projectId", requireWorkspaceMember, projectController.getById);
 router.put("/:projectId", requireWorkspaceMember, requireWorkspaceRole("ADMIN"), projectController.update);
 router.delete("/:projectId", requireWorkspaceMember, requireWorkspaceRole("ADMIN"), projectController.remove);
 
+router.patch(
+  "/:projectId/issue-types",
+  requireWorkspaceMember,
+  requireWorkspaceRole("ADMIN"),
+  projectController.updateIssueTypes
+);
+
 router.get("/:projectId/boards", requireWorkspaceMember, boardController.getByProject);
 router.post("/:projectId/boards", requireWorkspaceMember, requireWorkspaceRole("ADMIN"), boardController.create);
 
