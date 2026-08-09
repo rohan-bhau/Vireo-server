@@ -9,7 +9,7 @@ interface CreateInvitationInput {
   workspaceId: string;
   inviterId: string;
   inviteeEmail: string;
-  role?: "ADMIN" | "MEMBER" | "VIEWER";
+  role?: "ADMIN" | "EDIT" | "VIEW";
   message?: string;
 }
 
@@ -20,6 +20,20 @@ export async function createInvitation(input: CreateInvitationInput) {
 
   if (!workspace) {
     throw new AppError("Workspace not found", 404);
+  }
+
+  if (input.role === "ADMIN") {
+    const inviterMember = await prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: { workspaceId: input.workspaceId, userId: input.inviterId },
+      },
+    });
+    if (!inviterMember || inviterMember.role !== "ADMIN") {
+      throw new AppError("Only members can invite other members", 403);
+    }
+    if ((inviterMember.role === "ADMIN" && inviterMember.userId !== workspace.ownerId) && input.role === "ADMIN") {
+      throw new AppError("Only the workspace owner can invite admins", 403);
+    }
   }
 
   const existingMember = await prisma.workspaceMember.findFirst({
@@ -53,7 +67,7 @@ export async function createInvitation(input: CreateInvitationInput) {
       workspaceId: input.workspaceId,
       inviterId: input.inviterId,
       inviteeEmail: input.inviteeEmail,
-      role: input.role || "VIEWER",
+      role: input.role || "EDIT",
       message: input.message,
       token,
       expiresAt,

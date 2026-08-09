@@ -150,6 +150,67 @@ export function requireProjectRole(...roleNames: string[]) {
   };
 }
 
+export async function requireTaskEditor(
+  req: AuthRequest,
+  _res: Response,
+  next: NextFunction
+) {
+  try {
+    const Task = (await import("../models/mongoose/Task")).default;
+
+    let workspaceId: string | undefined = req.body?.workspaceId;
+
+    if (!workspaceId && req.params.taskKey) {
+      const task = await Task.findOne({ taskKey: req.params.taskKey }).select("workspaceId");
+      if (!task) throw new AppError("Task not found", 404);
+      workspaceId = task.workspaceId;
+    }
+
+    if (!workspaceId && req.body?.columnId) {
+      const column = await prisma.column.findUnique({
+        where: { id: req.body.columnId },
+        include: { board: { include: { project: true } } },
+      });
+      workspaceId = column?.board?.project?.workspaceId;
+    }
+
+    if (!workspaceId && req.body?.boardId) {
+      const board = await prisma.board.findUnique({
+        where: { id: req.body.boardId },
+        include: { project: true },
+      });
+      workspaceId = board?.project?.workspaceId;
+    }
+
+    if (!workspaceId) {
+      next();
+      return;
+    }
+
+    const workspaceMember = await prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: { workspaceId, userId: req.userId! },
+      },
+    });
+
+    if (!workspaceMember) {
+      throw new AppError("You are not a member of this workspace", 403);
+    }
+
+    if (workspaceMember.role === "VIEW") {
+      throw new AppError(
+        "View-only members cannot modify tasks in this workspace",
+        403
+      );
+    }
+
+    req.workspaceRole = workspaceMember.role;
+    next();
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function checkIssueSecurity(
   req: AuthRequest,
   _res: Response,

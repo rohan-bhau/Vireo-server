@@ -34,7 +34,7 @@ export async function requireWorkspaceMember(
   }
 }
 
-export function requireWorkspaceRole(...roles: ("ADMIN" | "MEMBER" | "VIEWER")[]) {
+export function requireWorkspaceRole(...roles: ("ADMIN" | "EDIT" | "VIEW")[]) {
   return (req: AuthRequest, _res: Response, next: NextFunction) => {
     try {
       if (!req.workspaceRole) {

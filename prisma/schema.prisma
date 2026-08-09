@@ -14,8 +14,8 @@ enum SprintStatus {
 
 enum WorkspaceRole {
   ADMIN
-  MEMBER
-  VIEWER
+  EDIT
+  VIEW
 }
 
 enum InvitationStatus {
@@ -45,7 +45,7 @@ model WorkspaceMember {
   id         String        @id @default(uuid())
   workspaceId String
   userId     String
-  role       WorkspaceRole @default(MEMBER)
+  role       WorkspaceRole @default(EDIT)
   joinedAt   DateTime      @default(now())
   invitedBy  String?
 
@@ -60,7 +60,7 @@ model Invitation {
   workspaceId  String
   inviterId    String
   inviteeEmail String
-  role         WorkspaceRole     @default(MEMBER)
+  role         WorkspaceRole     @default(EDIT)
   message      String?
   token        String            @unique
   status       InvitationStatus  @default(PENDING)

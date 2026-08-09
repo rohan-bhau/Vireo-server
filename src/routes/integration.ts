@@ -71,7 +71,7 @@ router.post(
 router.post(
   "/:workspaceId/slack/issue",
   requireWorkspaceMember,
-  requireWorkspaceRole("MEMBER"),
+  requireWorkspaceRole("EDIT"),
   integrationController.createSlackIssue
 );
 

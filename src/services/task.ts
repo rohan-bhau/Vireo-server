@@ -334,6 +334,19 @@ export async function deleteTask(taskKey: string, actorId?: string) {
   if (actorId) {
     const hasPerm = await checkProjectPermission(actorId, task.projectId, "DELETE_ISSUES");
     if (!hasPerm) throw new AppError("You do not have permission to delete issues in this project", 403);
+
+    const member = await prisma.workspaceMember.findUnique({
+      where: {
+        workspaceId_userId: { workspaceId: task.workspaceId, userId: actorId },
+      },
+    });
+
+    if (member && member.role === "EDIT" && task.reporter !== actorId) {
+      throw new AppError(
+        "You can only delete tasks you created. Contact a workspace admin.",
+        403
+      );
+    }
   }
 
   const taskTitle = task.title;

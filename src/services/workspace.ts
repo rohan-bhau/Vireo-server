@@ -2,6 +2,19 @@ import mongoose from "mongoose";
 import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
 import User from "../models/mongoose/User";
+import Task from "../models/mongoose/Task";
+import Comment from "../models/mongoose/Comment";
+import ActivityLog from "../models/mongoose/ActivityLog";
+import Epic from "../models/mongoose/Epic";
+import Component from "../models/mongoose/Component";
+import Version from "../models/mongoose/Version";
+import Group from "../models/mongoose/Group";
+import Dashboard from "../models/mongoose/Dashboard";
+import SavedFilter from "../models/mongoose/SavedFilter";
+import Subscription from "../models/mongoose/Subscription";
+import Notification from "../models/mongoose/Notification";
+import Conversation from "../models/mongoose/Conversation";
+import { getIO } from "../socket";
 import { notifyMemberAdded, notifyRoleChanged } from "./notification";
 import * as projectService from "./project";
 import type { ProjectTemplate } from "@prisma/client";
@@ -69,11 +82,40 @@ export async function getUserWorkspaces(userId: string) {
   const memberships = await prisma.workspaceMember.findMany({
     where: { userId },
     include: {
-      workspace: true,
+      workspace: {
+        include: {
+          members: true,
+        },
+      },
     },
   });
 
-  return memberships.map((m) => m.workspace);
+  const workspaces = memberships.map((m) => m.workspace);
+
+  const userIds = Array.from(
+    new Set(workspaces.flatMap((w) => w.members.map((m) => m.userId)))
+  );
+
+  let users: any[] = [];
+  if (userIds.length > 0) {
+    users = await User.find({
+      _id: { $in: userIds.map((id) => new mongoose.Types.ObjectId(id)) },
+    }).select("name email avatar");
+  }
+  const userMap = new Map(users.map((u: any) => [u._id.toString(), u]));
+
+  return workspaces.map((w) => ({
+    ...w,
+    members: w.members.map((m) => ({
+      id: m.id,
+      workspaceId: m.workspaceId,
+      userId: m.userId,
+      role: m.role,
+      joinedAt: m.joinedAt,
+      invitedBy: m.invitedBy,
+      user: userMap.get(m.userId) || null,
+    })),
+  }));
 }
 
 export async function updateWorkspace(
@@ -125,6 +167,7 @@ export async function getOrSeedDefaultProject(workspaceId: string) {
 export async function deleteWorkspace(workspaceId: string, userId?: string) {
   const workspace = await prisma.workspace.findUnique({
     where: { id: workspaceId },
+    include: { members: true, projects: true },
   });
 
   if (!workspace) {
@@ -135,7 +178,79 @@ export async function deleteWorkspace(workspaceId: string, userId?: string) {
     throw new AppError("Only the workspace owner can delete this workspace", 403);
   }
 
+  const memberIds = workspace.members.map((m) => m.userId);
+  const projectIds = workspace.projects.map((p) => p.id);
+
+  const taskKeys = (
+    await Task.find({ workspaceId }).select("taskKey")
+  ).map((t) => t.taskKey);
+
+  const conversations = await Conversation.find({ workspaceId }).select("_id");
+  const conversationIds = conversations.map((c) => c._id.toString());
+
+  await Promise.all([
+    Task.deleteMany({ workspaceId }),
+    Comment.deleteMany({ taskId: { $in: taskKeys } }),
+    ActivityLog.deleteMany({ taskId: { $in: taskKeys } }),
+    Epic.deleteMany({ workspaceId }),
+    Component.deleteMany({ projectId: { $in: projectIds } }),
+    Version.deleteMany({ projectId: { $in: projectIds } }),
+    Group.deleteMany({ workspaceId }),
+    Dashboard.deleteMany({ workspaceId }),
+    SavedFilter.deleteMany({ workspaceId }),
+    Subscription.deleteMany({ workspaceId }),
+    Notification.deleteMany({
+      $or: [
+        { workspaceId },
+        { taskId: { $in: taskKeys } },
+        { projectId: { $in: projectIds } },
+      ],
+    }),
+    Conversation.deleteMany({ workspaceId }),
+    import("../models/mongoose/Message").then(({ default: Message }) =>
+      Message.deleteMany({ conversationId: { $in: conversationIds } })
+    ),
+    import("../models/mongoose/ProjectRole").then(({ default: ProjectRole }) =>
+      ProjectRole.deleteMany({ workspaceId })
+    ),
+    import("../models/mongoose/PermissionScheme").then(({ default: PermissionScheme }) =>
+      PermissionScheme.deleteMany({ workspaceId })
+    ),
+    import("../models/mongoose/IssueSecurityScheme").then(({ default: IssueSecurityScheme }) =>
+      IssueSecurityScheme.deleteMany({ workspaceId })
+    ),
+    import("../models/mongoose/Workflow").then(({ default: Workflow }) =>
+      Workflow.deleteMany({ workspaceId })
+    ),
+    import("../models/mongoose/WorkflowScheme").then(({ default: WorkflowScheme }) =>
+      WorkflowScheme.deleteMany({ workspaceId })
+    ),
+    import("../models/mongoose/NotificationScheme").then(({ default: NotificationScheme }) =>
+      NotificationScheme.deleteMany({ workspaceId })
+    ),
+    import("../models/mongoose/AutomationRule").then(({ default: AutomationRule }) =>
+      AutomationRule.deleteMany({ workspaceId })
+    ),
+    import("../models/mongoose/Integration").then(({ default: Integration }) =>
+      Integration.deleteMany({ workspaceId })
+    ),
+    import("../models/mongoose/AuditLog").then(({ default: AuditLog }) =>
+      AuditLog.deleteMany({ workspaceId })
+    ),
+    import("../models/mongoose/WebhookLog").then(({ default: WebhookLog }) =>
+      WebhookLog.deleteMany({ workspaceId })
+    ),
+  ]);
+
   await prisma.workspace.delete({ where: { id: workspaceId } });
+
+  const io = getIO();
+  if (io) {
+    for (const memberId of memberIds) {
+      io.to(`user:${memberId}`).emit("workspace-removed", { workspaceId });
+    }
+    io.to(`workspace:${workspaceId}`).emit("workspace-deleted", { workspaceId });
+  }
 }
 
 export async function getWorkspaceMembers(workspaceId: string) {
@@ -183,12 +298,21 @@ export async function removeMember(workspaceId: string, userId: string, actorId?
   await prisma.workspaceMember.delete({
     where: { workspaceId_userId: { workspaceId, userId } },
   });
+
+  const io = getIO();
+  if (io) {
+    io.to(`user:${userId}`).emit("workspace-removed", { workspaceId });
+    io.to(`workspace:${workspaceId}`).emit("workspace-member-removed", {
+      workspaceId,
+      userId,
+    });
+  }
 }
 
 export async function updateMemberRole(
   workspaceId: string,
   userId: string,
-  role: "ADMIN" | "MEMBER" | "VIEWER",
+  role: "ADMIN" | "EDIT" | "VIEW",
   actorId: string
 ) {
   const member = await prisma.workspaceMember.findUnique({
@@ -205,6 +329,15 @@ export async function updateMemberRole(
     throw new AppError("You cannot change the workspace owner's role", 400);
   }
 
+  if (workspace && actorId !== workspace.ownerId) {
+    if (member.role === "ADMIN" || role === "ADMIN") {
+      throw new AppError(
+        "Only the workspace owner can change admin roles",
+        403
+      );
+    }
+  }
+
   const updated = await prisma.workspaceMember.update({
     where: { workspaceId_userId: { workspaceId, userId } },
     data: { role },
@@ -212,6 +345,15 @@ export async function updateMemberRole(
 
   if (updated.role === role && role !== member.role) {
     await notifyRoleChanged(userId, actorId, workspaceId, role);
+  }
+
+  const io = getIO();
+  if (io) {
+    io.to(`workspace:${workspaceId}`).emit("workspace-member-role-changed", {
+      workspaceId,
+      userId,
+      role,
+    });
   }
 
   return updated;

@@ -132,7 +132,7 @@ export async function updateMemberRole(
     const workspaceId = req.params.workspaceId as string;
     const userId = req.params.userId as string;
     const { role } = req.body;
-    if (!["ADMIN", "MEMBER", "VIEWER"].includes(role)) {
+    if (!["ADMIN", "EDIT", "VIEW"].includes(role)) {
       res.status(400).json({ status: "fail", message: "Invalid role" });
       return;
     }

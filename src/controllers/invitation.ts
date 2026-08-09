@@ -10,7 +10,7 @@ export async function create(
   try {
     const { inviteeEmail, role, message } = req.body;
     const workspaceId = req.params.workspaceId as string;
-    if (role && !["ADMIN", "MEMBER", "VIEWER"].includes(role)) {
+    if (role && !["ADMIN", "EDIT", "VIEW"].includes(role)) {
       res.status(400).json({ status: "fail", message: "Invalid role" });
       return;
     }
