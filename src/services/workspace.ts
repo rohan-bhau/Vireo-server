@@ -24,6 +24,7 @@ interface CreateWorkspaceInput {
   description?: string;
   ownerId: string;
   template?: ProjectTemplate;
+  avatar?: string;
 }
 
 const AVATAR_PRESET_COUNT = 12;
@@ -43,7 +44,7 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
     data: {
       name: input.name,
       description: input.description,
-      avatar: generateWorkspaceAvatar(input.name),
+      avatar: input.avatar || generateWorkspaceAvatar(input.name),
       ownerId: input.ownerId,
       template,
       members: {

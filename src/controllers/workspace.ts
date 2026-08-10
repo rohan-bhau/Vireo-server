@@ -41,12 +41,13 @@ export async function create(
   next: NextFunction
 ) {
   try {
-    const { name, description, template } = req.body;
+    const { name, description, template, avatar } = req.body;
     const workspace = await workspaceService.createWorkspace({
       name,
       description,
       ownerId: req.userId!,
       template,
+      avatar,
     });
     res.status(201).json({ status: "success", data: { workspace } });
   } catch (error) {
