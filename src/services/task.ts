@@ -12,6 +12,7 @@ import {
 } from "./notification";
 import { evaluateTriggers } from "./automation";
 import { checkProjectPermission, checkIssueSecurityAccess } from "./permission";
+import { sanitizeCustomFieldValues } from "./customField";
 
 interface CreateTaskInput {
   title: string;
@@ -31,6 +32,7 @@ interface CreateTaskInput {
   storyPoints?: number;
   parentTask?: string;
   workspaceId: string;
+  customFields?: Record<string, unknown>;
 }
 
 async function resolveOrCreateDefaultProject(workspaceId: string): Promise<{ id: string; key: string }> {
@@ -86,6 +88,13 @@ export async function createTask(input: CreateTaskInput) {
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) throw new AppError("Project not found", 404);
 
+  if (project.enabledIssueTypes && project.enabledIssueTypes.length > 0) {
+    const requestedType = input.type || "task";
+    if (!project.enabledIssueTypes.includes(requestedType)) {
+      throw new AppError("This issue type is disabled for this project", 403);
+    }
+  }
+
   const hasPerm = await checkProjectPermission(input.reporter, projectId, "CREATE_ISSUES");
   if (!hasPerm) throw new AppError("You do not have permission to create issues in this project", 403);
 
@@ -115,6 +124,9 @@ export async function createTask(input: CreateTaskInput) {
     storyPoints: input.storyPoints || null,
     parentTask: input.parentTask || null,
     workspaceId: input.workspaceId,
+    customFields: input.customFields
+      ? await sanitizeCustomFieldValues(input.workspaceId, input.customFields)
+      : {},
   });
 
   await ActivityLog.create({
@@ -191,11 +203,21 @@ interface UpdateTaskInput {
   columnId?: string | null;
   position?: number;
   sprintId?: string | null;
+  customFields?: Record<string, unknown>;
 }
 
 export async function updateTask(taskKey: string, input: UpdateTaskInput, actorId: string) {
   const task = await Task.findOne({ taskKey });
   if (!task) throw new AppError("Task not found", 404);
+
+  if (input.type !== undefined && input.type !== task.type) {
+    const project = await prisma.project.findUnique({ where: { id: task.projectId } });
+    if (project?.enabledIssueTypes && project.enabledIssueTypes.length > 0) {
+      if (!project.enabledIssueTypes.includes(input.type)) {
+        throw new AppError("This issue type is disabled for this project", 403);
+      }
+    }
+  }
 
   const hasPerm = await checkProjectPermission(actorId, task.projectId, "EDIT_ISSUES");
   if (!hasPerm) throw new AppError("You do not have permission to edit issues in this project", 403);
@@ -253,6 +275,10 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
   if (input.columnId !== undefined) task.columnId = input.columnId;
   if (input.position !== undefined) task.position = input.position;
   if (input.sprintId !== undefined) task.sprintId = input.sprintId;
+  if (input.customFields !== undefined) {
+    const sanitized = await sanitizeCustomFieldValues(task.workspaceId, input.customFields);
+    task.customFields = { ...(task.customFields || {}), ...sanitized };
+  }
 
   const updated = await task.save();
 

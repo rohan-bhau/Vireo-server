@@ -26,38 +26,14 @@ interface CreateWorkspaceInput {
   template?: ProjectTemplate;
 }
 
-const AVATAR_COLORS = [
-  "#2563EB",
-  "#7C3AED",
-  "#DB2777",
-  "#DC2626",
-  "#EA580C",
-  "#059669",
-  "#0D9488",
-  "#4F46E5",
-  "#C026D3",
-  "#6366F1",
-];
+const AVATAR_PRESET_COUNT = 12;
 
 export function generateWorkspaceAvatar(name: string): string {
-  const chars = Array.from(name.trim() || "W");
-  const initial = (chars[0] || "W").toUpperCase();
   let hash = 0;
-  for (const ch of chars) {
+  for (const ch of Array.from(name.trim() || "W")) {
     hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
   }
-  const color = AVATAR_COLORS[hash % AVATAR_COLORS.length];
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="${color}"/><text x="32" y="42" font-family="Arial, Helvetica, sans-serif" font-size="28" font-weight="700" fill="#ffffff" text-anchor="middle">${escapeCharacter(initial)}</text></svg>`;
-  return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
-}
-
-function escapeCharacter(ch: string): string {
-  return ch
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
+  return `/avatars/workspace-${(hash % AVATAR_PRESET_COUNT) + 1}.svg`;
 }
 
 export async function createWorkspace(input: CreateWorkspaceInput) {
@@ -168,7 +144,10 @@ export async function updateWorkspace(
       where: { id: workspaceId },
       select: { avatar: true },
     });
-    if (existing?.avatar?.startsWith("data:image/svg+xml")) {
+    if (
+      existing?.avatar?.startsWith("data:image/svg+xml") ||
+      existing?.avatar?.startsWith("/avatars/workspace-")
+    ) {
       updateData.avatar = generateWorkspaceAvatar(updateData.name);
     }
   }

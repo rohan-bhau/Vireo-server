@@ -2,6 +2,7 @@ import { Router } from "express";
 import multer from "multer";
 import * as workspaceController from "../controllers/workspace";
 import * as invitationController from "../controllers/invitation";
+import * as customFieldController from "../controllers/customField";
 import { authenticate } from "../middleware/auth";
 import { requireWorkspaceMember, requireWorkspaceRole } from "../middleware/workspace";
 
@@ -85,6 +86,30 @@ router.delete(
   requireWorkspaceMember,
   requireWorkspaceRole("ADMIN"),
   invitationController.cancel
+);
+
+router.get(
+  "/:workspaceId/custom-fields",
+  requireWorkspaceMember,
+  customFieldController.list
+);
+router.post(
+  "/:workspaceId/custom-fields",
+  requireWorkspaceMember,
+  requireWorkspaceRole("ADMIN"),
+  customFieldController.create
+);
+router.put(
+  "/:workspaceId/custom-fields/:fieldId",
+  requireWorkspaceMember,
+  requireWorkspaceRole("ADMIN"),
+  customFieldController.update
+);
+router.delete(
+  "/:workspaceId/custom-fields/:fieldId",
+  requireWorkspaceMember,
+  requireWorkspaceRole("ADMIN"),
+  customFieldController.remove
 );
 
 export default router;

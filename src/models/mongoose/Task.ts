@@ -29,6 +29,7 @@ export interface ITask {
   sprintId?: string | null;
   securityLevel?: string | null;
   watchers: string[];
+  customFields?: Record<string, string | number | null>;
 }
 
 const taskSchema = new Schema<ITask>(
@@ -146,6 +147,10 @@ const taskSchema = new Schema<ITask>(
     watchers: {
       type: [String],
       default: [],
+    },
+    customFields: {
+      type: Schema.Types.Mixed,
+      default: {},
     },
   },
   { timestamps: true }
