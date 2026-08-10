@@ -1,10 +1,25 @@
 import Notification, { NotificationType, INotification } from "../models/mongoose/Notification";
+import type { NotificationEvent } from "../models/mongoose/NotificationScheme";
 import User from "../models/mongoose/User";
 import Task from "../models/mongoose/Task";
 import * as notificationSchemeService from "./notificationScheme";
+import * as notificationPreferenceService from "./notificationPreference";
 import { sendNotificationEmail } from "./email";
 import { getIO } from "../socket";
 import { prisma } from "../config/prisma";
+
+const NOTIFICATION_EVENT_BY_TYPE: Partial<Record<NotificationType, NotificationEvent>> = {
+  assigned: "issue_assigned",
+  status_changed: "issue_transitioned",
+  mentioned: "mentioned",
+  commented: "issue_commented",
+  issue_created: "issue_created",
+  issue_updated: "issue_updated",
+  issue_deleted: "issue_deleted",
+  sprint_started: "sprint_started",
+  sprint_completed: "sprint_completed",
+  issue_completed: "issue_updated",
+};
 
 export async function createNotification(data: {
   userId: string;
@@ -104,6 +119,10 @@ async function dispatchNotification(
   options?: { projectId?: string; workspaceId?: string; sendEmail?: boolean; actorName?: string }
 ) {
   if (userId === actorId) return;
+
+  const event = NOTIFICATION_EVENT_BY_TYPE[type];
+  const enabled = await notificationPreferenceService.isEventEnabled(userId, options?.workspaceId, event);
+  if (!enabled) return;
 
   await createNotification({
     userId,

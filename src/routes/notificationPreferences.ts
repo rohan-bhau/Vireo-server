@@ -2,10 +2,43 @@ import { Router } from "express";
 import { Response, NextFunction } from "express";
 import { AuthRequest, authenticate } from "../middleware/auth";
 import User from "../models/mongoose/User";
+import * as notificationPreferenceService from "../services/notificationPreference";
+import * as notificationSchemeService from "../services/notificationScheme";
 
 const router = Router();
 
 router.use(authenticate);
+
+router.get("/workspace/:workspaceId", async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const workspaceId = req.params.workspaceId as string;
+    const pref = await notificationPreferenceService.getPreference(req.userId!, workspaceId);
+    let events: string[] = [];
+    if (pref) {
+      events = pref.events;
+    } else {
+      const scheme = await notificationSchemeService.getDefaultScheme(workspaceId);
+      events = scheme.events.map((e) => e.event);
+    }
+    res.status(200).json({ status: "success", data: { events } });
+  } catch (error) {
+    next(error);
+  }
+});
+
+router.put("/workspace/:workspaceId", async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    const workspaceId = req.params.workspaceId as string;
+    const events: string[] = Array.isArray(req.body?.events) ? req.body.events : [];
+    const pref = await notificationPreferenceService.setPreference(req.userId!, workspaceId, events);
+    res.status(200).json({
+      status: "success",
+      data: { events: pref?.events || [] },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 router.get("/", async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
