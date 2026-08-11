@@ -403,6 +403,28 @@ export async function recordAiCall(workspaceId: string) {
   await sub.save();
 }
 
+/**
+ * Non-fatal AI limit guard: unlike checkAiCallLimit, it never throws when a
+ * subscription record is missing (e.g. workspace created before billing was
+ * wired up) — AI features must keep working regardless of billing state.
+ */
+export async function tryCheckAiCallLimit(workspaceId: string): Promise<void> {
+  try {
+    await checkAiCallLimit(workspaceId);
+  } catch (err) {
+    if (err instanceof AppError && err.statusCode === 404) return;
+    throw err;
+  }
+}
+
+export async function tryRecordAiCall(workspaceId: string): Promise<void> {
+  try {
+    await recordAiCall(workspaceId);
+  } catch {
+    // Never let usage tracking break the AI call itself.
+  }
+}
+
 /* ---------------- Storage limit ---------------- */
 
 export async function checkStorageLimit(workspaceId: string, newBytes: number) {

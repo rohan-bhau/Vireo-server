@@ -5,7 +5,8 @@ export type AIFeatureType =
   | "summarizer"
   | "smart_triage"
   | "sprint_planner"
-  | "chat_assistant";
+  | "chat_assistant"
+  | "comment_reply";
 
 export interface IAIInteraction {
   userId: string;
@@ -16,6 +17,7 @@ export interface IAIInteraction {
   tokensUsed: number;
   duration: number;
   metadata?: Record<string, unknown>;
+  conversationId?: string;
   createdAt: Date;
 }
 
@@ -28,7 +30,7 @@ const aiInteractionSchema = new Schema<IAIInteraction>(
     },
     feature: {
       type: String,
-      enum: ["ticket_writer", "summarizer", "smart_triage", "sprint_planner", "chat_assistant"],
+      enum: ["ticket_writer", "summarizer", "smart_triage", "sprint_planner", "chat_assistant", "comment_reply"],
       required: true,
       index: true,
     },
@@ -56,12 +58,17 @@ const aiInteractionSchema = new Schema<IAIInteraction>(
       type: Schema.Types.Mixed,
       default: {},
     },
+    conversationId: {
+      type: String,
+      index: true,
+    },
   },
   { timestamps: true }
 );
 
 aiInteractionSchema.index({ userId: 1, createdAt: -1 });
 aiInteractionSchema.index({ feature: 1, createdAt: -1 });
+aiInteractionSchema.index({ conversationId: 1, createdAt: 1 });
 
 const AIInteraction = mongoose.model<IAIInteraction>("AIInteraction", aiInteractionSchema);
 

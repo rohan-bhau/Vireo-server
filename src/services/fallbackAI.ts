@@ -12,6 +12,23 @@ const LABEL_SUGGESTIONS: Record<string, string[]> = {
   subtask: ["sub-task"],
 };
 
+export function fallbackCommentReply(
+  commentText: string,
+  threadContext?: string
+): string {
+  const draft = commentText.trim();
+  if (draft) {
+    return `${draft}\n\nLet me know your thoughts on this. Happy to discuss further.`;
+  }
+  const lastComment = threadContext
+    ? threadContext.split("\n").filter(Boolean).pop() || ""
+    : "";
+  if (lastComment) {
+    return `Thanks for the update — that makes sense. Let me review the details and follow up with any questions or next steps here.`;
+  }
+  return `Thanks for sharing your thoughts on this task. I'll take a look and follow up with any questions or proposed next steps.`;
+}
+
 export function fallbackTicketDraft(title: string, type: string) {
   const typeDesc = TASK_TEMPLATES[type] || TASK_TEMPLATES.task;
   return {
@@ -90,15 +107,18 @@ export function fallbackTriage(taskTitle: string) {
   };
 }
 
-export function fallbackSprintPlan(sprintName: string, capacity: number, backlogCount: number) {
+export function fallbackSprintPlan(
+  sprintName: string,
+  capacity: number,
+  backlogTasks: { taskKey: string; title?: string; priority?: string; storyPoints?: number | null }[]
+) {
+  const backlogCount = backlogTasks.length;
   const estimatedTasks = Math.min(backlogCount, Math.max(1, Math.floor(capacity / 3)));
-  const tasks = [];
-  for (let i = 0; i < estimatedTasks && i < 10; i++) {
-    tasks.push({
-      taskKey: `Backlog item ${i + 1}`,
-      reason: `High priority task that fits within sprint capacity. Estimated at approximately ${Math.round(capacity / estimatedTasks)} points.`,
-    });
-  }
+  const picked = backlogTasks.slice(0, Math.min(estimatedTasks, 10));
+  const tasks = picked.map((t) => ({
+    taskKey: t.taskKey,
+    reason: `High priority task that fits within sprint capacity. Estimated at approximately ${Math.round(capacity / Math.max(1, estimatedTasks))} points.`,
+  }));
 
   return {
     suggestedTasks: tasks,
@@ -108,7 +128,7 @@ export function fallbackSprintPlan(sprintName: string, capacity: number, backlog
 }
 
 const FAQ_RESPONSES: { pattern: RegExp; response: string }[] = [
-  { pattern: /hello|hi|hey|greetings/i, response: "Hello! I'm VIREO AI. I can help you with project management tasks like writing tickets, planning sprints, summarizing discussions, and more. What would you like help with?" },
+  { pattern: /\b(hello|hi|hey|greetings)\b/i, response: "Hello! I'm VIREO AI. I can help you with project management tasks like writing tickets, planning sprints, summarizing discussions, and more. What would you like help with?" },
   { pattern: /summarize|summary|summarize/i, response: "To summarize a task thread, navigate to the task detail page and click the 'AI Summarize' button. I'll analyze all comments and provide a concise summary with key points and suggested actions." },
   { pattern: /ticket|task|create|write/i, response: "To create a task with AI assistance, go to your workspace Summary tab and click 'AI Write Ticket'. Enter a title and type, and I'll generate a detailed description with acceptance criteria and labels." },
   { pattern: /sprint|plan|capacity/i, response: "The AI Sprint Planner can help! Go to the Summary tab and click on 'AI Sprint Planner'. Enter a sprint name and capacity in story points, and I'll suggest the best tasks from your backlog." },
