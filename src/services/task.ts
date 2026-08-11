@@ -13,6 +13,7 @@ import {
 import { evaluateTriggers } from "./automation";
 import { checkProjectPermission, checkIssueSecurityAccess } from "./permission";
 import { sanitizeCustomFieldValues } from "./customField";
+import { recomputeStorageUsed } from "./billing";
 
 interface CreateTaskInput {
   title: string;
@@ -502,7 +503,7 @@ function mapColumnToStatus(columnName: string): TaskStatus {
 
 export async function addAttachment(
   taskKey: string,
-  attachment: { url: string; filename: string; publicId: string },
+  attachment: { url: string; filename: string; publicId: string; size?: number },
   actorId: string
 ) {
   const task = await Task.findOne({ taskKey });
@@ -519,6 +520,10 @@ export async function addAttachment(
     newValue: attachment.filename,
     timestamp: new Date(),
   });
+
+  // Storage is recomputed from actual attachment sizes, never merely
+  // incremented — keeps storageUsedMB accurate after uploads.
+  await recomputeStorageUsed(task.workspaceId as string);
 
   return task;
 }
@@ -541,6 +546,8 @@ export async function removeAttachment(taskKey: string, publicId: string, actorI
     oldValue: attachment.filename,
     timestamp: new Date(),
   });
+
+  await recomputeStorageUsed(task.workspaceId as string);
 }
 
 export async function linkTasks(

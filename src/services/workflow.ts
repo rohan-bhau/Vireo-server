@@ -2,6 +2,7 @@ import Workflow from "../models/mongoose/Workflow";
 import WorkflowScheme from "../models/mongoose/WorkflowScheme";
 import Task from "../models/mongoose/Task";
 import { AppError } from "../utils/AppError";
+import { assertWorkflowEditingAllowed } from "./billing";
 import type { StatusCategory, ITransitionCondition, ITransitionValidator, ITransitionPostFunction } from "../models/mongoose/Workflow";
 
 interface CreateWorkflowInput {
@@ -29,6 +30,8 @@ interface CreateWorkflowInput {
 }
 
 export async function createWorkflow(input: CreateWorkflowInput) {
+  await assertWorkflowEditingAllowed(input.workspaceId);
+
   const existing = await Workflow.findOne({ projectId: input.projectId, name: input.name });
   if (existing) throw new AppError("Workflow with this name already exists for this project", 409);
 
@@ -84,6 +87,8 @@ export async function updateWorkflow(id: string, input: {
   const workflow = await Workflow.findById(id);
   if (!workflow) throw new AppError("Workflow not found", 404);
 
+  await assertWorkflowEditingAllowed(workflow.workspaceId as string);
+
   const updateData: any = {};
   if (input.name !== undefined) updateData.name = input.name;
   if (input.statuses !== undefined) updateData.statuses = input.statuses.map((s) => ({ ...s, category: s.category || "todo" }));
@@ -99,6 +104,7 @@ export async function updateWorkflow(id: string, input: {
 export async function deleteWorkflow(id: string) {
   const workflow = await Workflow.findById(id);
   if (!workflow) throw new AppError("Workflow not found", 404);
+  await assertWorkflowEditingAllowed(workflow.workspaceId as string);
   if (workflow.isDefault) throw new AppError("Cannot delete default workflow", 400);
 
   const scheme = await WorkflowScheme.findOne({
@@ -143,6 +149,7 @@ export async function seedDefaultWorkflow(projectId: string, workspaceId: string
 export async function copyWorkflow(id: string, newName: string) {
   const workflow = await Workflow.findById(id);
   if (!workflow) throw new AppError("Workflow not found", 404);
+  await assertWorkflowEditingAllowed(workflow.workspaceId as string);
 
   const existing = await Workflow.findOne({ projectId: workflow.projectId, name: newName });
   if (existing) throw new AppError("Workflow with this name already exists", 409);

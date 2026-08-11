@@ -4,6 +4,7 @@ import AIInteraction, { AIFeatureType } from "../models/mongoose/AIInteraction";
 import Task from "../models/mongoose/Task";
 import Comment from "../models/mongoose/Comment";
 import { prisma } from "../config/prisma";
+import { checkAiCallLimit, recordAiCall } from "./billing";
 import {
   fallbackTicketDraft,
   fallbackSummarize,
@@ -31,6 +32,38 @@ try {
 }
 
 const MODEL = config.llm.model;
+
+async function resolveWorkspaceIdFromProject(
+  projectId?: string
+): Promise<string | null> {
+  if (!projectId) return null;
+  const project = await prisma.project.findUnique({
+    where: { id: projectId },
+    select: { workspaceId: true },
+  });
+  return project?.workspaceId ?? null;
+}
+
+async function resolveWorkspaceIdFromTask(
+  taskKey?: string
+): Promise<string | null> {
+  if (!taskKey) return null;
+  const task = await Task.findOne({ taskKey }).select("workspaceId").lean();
+  return (task?.workspaceId as string | undefined) ?? null;
+}
+
+interface AiChatContext {
+  taskKey?: string;
+  workspaceId?: string;
+  projectId?: string;
+}
+
+async function resolveAiWorkspaceId(context: AiChatContext): Promise<string | null> {
+  if (context.workspaceId) return context.workspaceId;
+  const fromTask = await resolveWorkspaceIdFromTask(context.taskKey);
+  if (fromTask) return fromTask;
+  return resolveWorkspaceIdFromProject(context.projectId);
+}
 
 async function callLLMReal(
   systemPrompt: string,
@@ -83,6 +116,9 @@ export async function generateTicketDraft(
   projectId: string,
   userId: string
 ) {
+  const workspaceId = await resolveWorkspaceIdFromProject(projectId);
+  if (workspaceId) await checkAiCallLimit(workspaceId);
+
   const systemPrompt = "You are an expert project manager assistant that helps write clear, actionable tickets.";
   const prompt = `Generate a detailed ticket for a project management system.
 
@@ -97,22 +133,34 @@ Provide:
 Respond in JSON format with keys: description, acceptanceCriteria, suggestedLabels.`;
 
   const response = await callLLMReal(systemPrompt, prompt, userId, "ticket_writer");
+  let result: {
+    description: string;
+    acceptanceCriteria: string[];
+    suggestedLabels: string[];
+  };
   if (response) {
     try {
       const parsed = JSON.parse(response);
-      return {
+      result = {
         description: parsed.description || "",
         acceptanceCriteria: parsed.acceptanceCriteria || [],
         suggestedLabels: parsed.suggestedLabels || [],
       };
     } catch {
-      return fallbackTicketDraft(title, type);
+      result = fallbackTicketDraft(title, type);
     }
+  } else {
+    result = fallbackTicketDraft(title, type);
   }
-  return fallbackTicketDraft(title, type);
+
+  if (workspaceId) await recordAiCall(workspaceId);
+  return result;
 }
 
 export async function summarizeThread(taskKey: string, userId: string) {
+  const workspaceId = await resolveWorkspaceIdFromTask(taskKey);
+  if (workspaceId) await checkAiCallLimit(workspaceId);
+
   const comments = await Comment.find({ taskId: taskKey }).sort({ createdAt: 1 });
 
   const context = comments
@@ -131,19 +179,28 @@ ${context || "No comments yet."}
 Respond in JSON format with keys: summary, keyPoints, suggestedAction.`;
 
   const response = await callLLMReal(systemPrompt, prompt, userId, "summarizer");
+  let result: {
+    summary: string;
+    keyPoints: string[];
+    suggestedAction: string;
+  };
   if (response) {
     try {
       const parsed = JSON.parse(response);
-      return {
+      result = {
         summary: parsed.summary || "",
         keyPoints: parsed.keyPoints || [],
         suggestedAction: parsed.suggestedAction || "",
       };
     } catch {
-      return fallbackSummarize(comments);
+      result = fallbackSummarize(comments);
     }
+  } else {
+    result = fallbackSummarize(comments);
   }
-  return fallbackSummarize(comments);
+
+  if (workspaceId) await recordAiCall(workspaceId);
+  return result;
 }
 
 export async function smartTriage(
@@ -152,6 +209,8 @@ export async function smartTriage(
   workspaceId: string,
   userId: string
 ) {
+  if (workspaceId) await checkAiCallLimit(workspaceId);
+
   const systemPrompt = "You are a smart triage assistant for a project management platform. Analyze tasks and suggest assignee, priority, labels, and type.";
   const prompt = `Analyze this task and suggest triage decisions:
 
@@ -166,10 +225,17 @@ Respond in JSON format with:
 - reasoning: brief explanation`;
 
   const response = await callLLMReal(systemPrompt, prompt, userId, "smart_triage");
+  let result: {
+    suggestedAssignee: string | null;
+    suggestedPriority: string;
+    suggestedLabels: string[];
+    suggestedType: string;
+    reasoning: string;
+  };
   if (response) {
     try {
       const parsed = JSON.parse(response);
-      return {
+      result = {
         suggestedAssignee: parsed.suggestedAssignee || null,
         suggestedPriority: parsed.suggestedPriority || "medium",
         suggestedLabels: parsed.suggestedLabels || [],
@@ -177,10 +243,14 @@ Respond in JSON format with:
         reasoning: parsed.reasoning || "",
       };
     } catch {
-      return fallbackTriage(taskTitle);
+      result = fallbackTriage(taskTitle);
     }
+  } else {
+    result = fallbackTriage(taskTitle);
   }
-  return fallbackTriage(taskTitle);
+
+  if (workspaceId) await recordAiCall(workspaceId);
+  return result;
 }
 
 export async function suggestSprintPlan(
@@ -189,6 +259,9 @@ export async function suggestSprintPlan(
   sprintCapacity: number,
   userId: string
 ) {
+  const workspaceId = await resolveWorkspaceIdFromProject(projectId);
+  if (workspaceId) await checkAiCallLimit(workspaceId);
+
   const backlogTasks = await Task.find({ projectId, sprintId: null }).sort({ priority: -1, storyPoints: -1 });
 
   const taskList = backlogTasks
@@ -211,30 +284,38 @@ Respond in JSON format with:
 - estimatedPoints: total estimated points number`;
 
   const response = await callLLMReal(systemPrompt, prompt, userId, "sprint_planner");
+  let result: {
+    suggestedTasks: { taskKey: string; reason: string }[];
+    goal: string;
+    estimatedPoints: number;
+  };
   if (response) {
     try {
       const parsed = JSON.parse(response);
-      return {
+      result = {
         suggestedTasks: parsed.suggestedTasks || [],
         goal: parsed.goal || "",
         estimatedPoints: parsed.estimatedPoints || 0,
       };
     } catch {
-      return fallbackSprintPlan(sprintName, sprintCapacity, backlogTasks.length);
+      result = fallbackSprintPlan(sprintName, sprintCapacity, backlogTasks.length);
     }
+  } else {
+    result = fallbackSprintPlan(sprintName, sprintCapacity, backlogTasks.length);
   }
-  return fallbackSprintPlan(sprintName, sprintCapacity, backlogTasks.length);
+
+  if (workspaceId) await recordAiCall(workspaceId);
+  return result;
 }
 
 export async function chatWithAI(
   message: string,
-  context: {
-    taskKey?: string;
-    workspaceId?: string;
-    projectId?: string;
-  },
+  context: AiChatContext,
   userId: string
 ) {
+  const workspaceId = await resolveAiWorkspaceId(context);
+  if (workspaceId) await checkAiCallLimit(workspaceId);
+
   let contextBlock = "";
 
   if (context.taskKey) {
@@ -261,10 +342,15 @@ Be concise, helpful, and professional. Current context:
 ${contextBlock || "No specific context."}`;
 
   const response = await callLLMReal(systemPrompt, message, userId, "chat_assistant");
+  let result: { reply: string };
   if (response) {
-    return { reply: response };
+    result = { reply: response };
+  } else {
+    result = { reply: fallbackChat(message) };
   }
-  return { reply: fallbackChat(message) };
+
+  if (workspaceId) await recordAiCall(workspaceId);
+  return result;
 }
 
 export async function getAIHistory(

@@ -3,6 +3,7 @@ import { AuthRequest } from "../middleware/auth";
 import {
   getSubscription,
   getPlans,
+  getUsageStats,
   createCheckoutSession,
   cancelSubscription,
   resumeSubscription,
@@ -38,6 +39,20 @@ export async function getSubscriptionHandler(
     const workspaceId = getWorkspaceId(req);
     const subscription = await getSubscription(workspaceId);
     res.json({ status: "success", data: { subscription } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getUsageStatsHandler(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const workspaceId = getWorkspaceId(req);
+    const usage = await getUsageStats(workspaceId);
+    res.json({ status: "success", data: usage });
   } catch (error) {
     next(error);
   }

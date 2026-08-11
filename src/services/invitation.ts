@@ -4,6 +4,7 @@ import { AppError } from "../utils/AppError";
 import User from "../models/mongoose/User";
 import { sendInvitationEmail, sendWelcomeEmail } from "./email";
 import { notifyMemberAdded } from "./notification";
+import { assertMemberLimitAllowed, getMemberLimitStatus } from "./billing";
 
 interface CreateInvitationInput {
   workspaceId: string;
@@ -58,6 +59,10 @@ export async function createInvitation(input: CreateInvitationInput) {
   if (existingInvitation) {
     throw new AppError("An active invitation already exists for this email", 409);
   }
+
+  // Plan gate: Free workspaces have a hard member cap. Seats = active
+  // members + pending invitations, so each pending invite reserves a seat.
+  await assertMemberLimitAllowed(input.workspaceId);
 
   const token = uuidv4();
   const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
@@ -164,6 +169,19 @@ export async function acceptInvitation(token: string, userId: string) {
 
   if (existingMember) {
     throw new AppError("You are already a member of this workspace", 409);
+  }
+
+  // Defensive re-check: the seat cap may have been reached after the invite
+  // was sent (e.g. the plan changed to Free). Active members only — this
+  // invite already reserved its seat when it was created.
+  const status = await getMemberLimitStatus(invitation.workspaceId, {
+    includePending: false,
+  });
+  if (status.memberLimit !== null && !status.allowed) {
+    throw new AppError(
+      `Member limit reached: this workspace's plan allows up to ${status.memberLimit} members and it is at capacity. Ask an admin to upgrade: /w/${invitation.workspaceId}/settings/billing`,
+      403
+    );
   }
 
   await prisma.$transaction([

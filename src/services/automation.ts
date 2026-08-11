@@ -2,6 +2,7 @@ import AutomationRule from "../models/mongoose/AutomationRule";
 import Task from "../models/mongoose/Task";
 import ActivityLog from "../models/mongoose/ActivityLog";
 import { AppError } from "../utils/AppError";
+import { checkAutomationRunLimit, recordAutomationRun } from "./billing";
 
 interface CreateRuleInput {
   name: string;
@@ -185,6 +186,16 @@ export async function evaluateTriggers(
       const conditionsMet = evaluateConditions(rule.conditions, context.task || {});
       if (!conditionsMet) continue;
 
+      // Plan gate: skip the run when the workspace's monthly automation
+      // budget is exhausted. Fire-and-forget callers — never throw here.
+      const runLimit = await checkAutomationRunLimit(context.workspaceId);
+      if (!runLimit.allowed) {
+        console.warn(
+          `[Automation] Skipping rule "${rule.name}" — ${runLimit.plan} plan automation limit reached (${runLimit.used}/${runLimit.limit ?? "∞"}) for workspace ${context.workspaceId}`
+        );
+        continue;
+      }
+
       if (rule.branches && rule.branches.length > 0) {
         await executeBranches(rule.branches, context);
       } else {
@@ -203,6 +214,8 @@ export async function evaluateTriggers(
         newValue: `Rule "${rule.name}" triggered`,
         timestamp: new Date(),
       });
+
+      await recordAutomationRun(context.workspaceId);
     } catch (err) {
       console.error(`Automation rule "${rule.name}" failed:`, err);
     }

@@ -17,6 +17,7 @@ import Conversation from "../models/mongoose/Conversation";
 import { getIO } from "../socket";
 import { notifyMemberAdded, notifyRoleChanged } from "./notification";
 import * as projectService from "./project";
+import { createSubscription } from "./billing";
 import type { ProjectTemplate } from "@prisma/client";
 
 interface CreateWorkspaceInput {
@@ -72,6 +73,14 @@ export async function createWorkspace(input: CreateWorkspaceInput) {
     console.error("Failed to seed default project:", err);
   }
 
+  // Subscription is created eagerly (never lazily) — every workspace must
+  // have a Billing plan from the moment it exists.
+  try {
+    await createSubscription(workspace.id);
+  } catch (err) {
+    console.error("Failed to create workspace subscription:", err);
+  }
+
   return workspace;
 }
 
@@ -91,43 +100,83 @@ export async function getWorkspaceById(workspaceId: string) {
 }
 
 export async function getUserWorkspaces(userId: string) {
-  const memberships = await prisma.workspaceMember.findMany({
-    where: { userId },
-    include: {
-      workspace: {
-        include: {
-          members: true,
-        },
-      },
-    },
-  });
+  const rows: any[] = await prisma.$queryRaw`
+    SELECT wm.id        AS member_id,
+           wm."workspaceId" AS member_workspace_id,
+           wm."userId"      AS member_user_id,
+           wm.role          AS member_role,
+           wm."joinedAt"    AS member_joined_at,
+           wm."invitedBy"   AS member_invited_by,
+           w.id         AS ws_id,
+           w.name          AS ws_name,
+           w.description   AS ws_description,
+           w.avatar        AS ws_avatar,
+           w."ownerId"     AS ws_owner_id,
+           w.template      AS ws_template,
+           w."createdAt"   AS ws_created_at,
+           w."updatedAt"   AS ws_updated_at
+    FROM workspace_members wm
+    JOIN workspaces w ON w.id = wm."workspaceId"
+    WHERE wm."userId" = ${userId}
+    ORDER BY w."createdAt" DESC
+  `;
 
-  const workspaces = memberships.map((m) => m.workspace);
-
-  const userIds = Array.from(
-    new Set(workspaces.flatMap((w) => w.members.map((m) => m.userId)))
+  const memberUserIds = Array.from(
+    new Set(rows.map((r) => r.member_user_id as string))
   );
 
   let users: any[] = [];
-  if (userIds.length > 0) {
+  if (memberUserIds.length > 0) {
     users = await User.find({
-      _id: { $in: userIds.map((id) => new mongoose.Types.ObjectId(id)) },
+      _id: { $in: memberUserIds.map((id) => new mongoose.Types.ObjectId(id)) },
     }).select("name email avatar");
   }
   const userMap = new Map(users.map((u: any) => [u._id.toString(), u]));
 
-  return workspaces.map((w) => ({
-    ...w,
-    members: w.members.map((m) => ({
-      id: m.id,
-      workspaceId: m.workspaceId,
-      userId: m.userId,
-      role: m.role,
-      joinedAt: m.joinedAt,
-      invitedBy: m.invitedBy,
-      user: userMap.get(m.userId) || null,
-    })),
-  }));
+  const byWorkspace = new Map<
+    string,
+    {
+      id: string;
+      name: string;
+      description: string | null;
+      avatar: string | null;
+      ownerId: string;
+      template: string;
+      createdAt: Date;
+      updatedAt: Date;
+      members: any[];
+    }
+  >();
+
+  for (const r of rows) {
+    const wsId = r.ws_id as string;
+    let ws = byWorkspace.get(wsId);
+    if (!ws) {
+      ws = {
+        id: wsId,
+        name: r.ws_name as string,
+        description: (r.ws_description as string | null) ?? null,
+        avatar: (r.ws_avatar as string | null) ?? null,
+        ownerId: r.ws_owner_id as string,
+        template: r.ws_template as string,
+        createdAt: r.ws_created_at as Date,
+        updatedAt: r.ws_updated_at as Date,
+        members: [],
+      };
+      byWorkspace.set(wsId, ws);
+    }
+    ws.members.push({
+      id: r.member_id as string,
+      workspaceId: r.member_workspace_id as string,
+      userId: r.member_user_id as string,
+      role: r.member_role as string,
+      joinedAt: r.member_joined_at as Date,
+      invitedBy: (r.member_invited_by as string | null) ?? null,
+      user: userMap.get(r.member_user_id as string) || null,
+    });
+  }
+
+  return Array.from(byWorkspace.values());
 }
 
 export async function updateWorkspace(

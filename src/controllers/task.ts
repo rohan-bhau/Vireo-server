@@ -3,6 +3,7 @@ import { AuthRequest } from "../middleware/auth";
 import { getIO } from "../socket";
 import * as taskService from "../services/task";
 import * as cloudinaryService from "../services/cloudinary";
+import { checkStorageLimit } from "../services/billing";
 
 function emitTaskEvent(event: string, boardId: string | null | undefined, workspaceId: string | null | undefined, data: unknown) {
   const io = getIO();
@@ -145,11 +146,20 @@ export async function uploadAttachment(req: AuthRequest, res: Response, next: Ne
     }
 
     const task = await taskService.getTaskByKey(taskKey);
+
+    // Plan gate: reject the upload before it hits Cloudinary when the
+    // workspace is at its storage limit.
+    await checkStorageLimit(task.workspaceId, file.size || 0);
+
     const { url, publicId } = await cloudinaryService.uploadAttachmentToCloudinary(file.buffer, file.originalname, {
       projectKey: task.projectId,
     });
 
-    const updated = await taskService.addAttachment(taskKey, { url, filename: file.originalname, publicId }, req.userId!);
+    const updated = await taskService.addAttachment(
+      taskKey,
+      { url, filename: file.originalname, publicId, size: file.size || 0 },
+      req.userId!
+    );
     emitTaskEvent("task-updated", updated.boardId, updated.workspaceId, { task: updated });
     res.status(200).json({ status: "success", data: { task: updated } });
   } catch (error) {

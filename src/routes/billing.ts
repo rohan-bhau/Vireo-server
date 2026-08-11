@@ -4,6 +4,7 @@ import { requireWorkspaceMember, requireWorkspaceRole } from "../middleware/work
 import {
   getPlansHandler,
   getSubscriptionHandler,
+  getUsageStatsHandler,
   createCheckoutSessionHandler,
   cancelSubscriptionHandler,
   resumeSubscriptionHandler,
@@ -21,6 +22,13 @@ router.get(
   authenticate,
   requireWorkspaceMember,
   getSubscriptionHandler
+);
+
+router.get(
+  "/:workspaceId/usage-stats",
+  authenticate,
+  requireWorkspaceMember,
+  getUsageStatsHandler
 );
 
 router.post(

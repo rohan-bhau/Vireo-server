@@ -128,6 +128,7 @@ const taskSchema = new Schema<ITask>(
           url: { type: String, required: true },
           filename: { type: String, required: true },
           publicId: { type: String, required: true },
+          size: { type: Number, default: 0 },
         },
       ],
       default: [],

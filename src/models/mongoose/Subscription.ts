@@ -1,9 +1,12 @@
 import mongoose, { Document, Schema } from "mongoose";
 
+export type SubscriptionPlan = "free" | "pro" | "enterprise";
+export type SubscriptionStatus = "trialing" | "active" | "past_due" | "canceled";
+
 export interface ISubscription extends Document {
   workspaceId: string;
-  plan: "free" | "pro" | "enterprise";
-  status: "active" | "canceled" | "past_due" | "trialing" | "incomplete";
+  plan: SubscriptionPlan;
+  status: SubscriptionStatus;
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
   trialEndsAt?: Date;
@@ -11,8 +14,13 @@ export interface ISubscription extends Document {
   currentPeriodStart?: Date;
   currentPeriodEnd?: Date;
   cancelAtPeriodEnd: boolean;
-  memberLimit: number;
-  projectLimit: number;
+  memberLimit: number | null;
+  automationRunLimit: number | null;
+  aiCallLimit: number | null;
+  storageLimitMB: number | null;
+  automationRunsUsedThisPeriod: number;
+  aiCallsUsedThisPeriod: number;
+  storageUsedMB: number;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -32,8 +40,8 @@ const subscriptionSchema = new Schema<ISubscription>(
     },
     status: {
       type: String,
-      enum: ["active", "canceled", "past_due", "trialing", "incomplete"],
-      default: "active",
+      enum: ["trialing", "active", "past_due", "canceled"],
+      default: "trialing",
     },
     stripeCustomerId: {
       type: String,
@@ -59,11 +67,31 @@ const subscriptionSchema = new Schema<ISubscription>(
     },
     memberLimit: {
       type: Number,
-      default: 3,
+      default: 10,
     },
-    projectLimit: {
+    automationRunLimit: {
       type: Number,
-      default: 2,
+      default: 100,
+    },
+    aiCallLimit: {
+      type: Number,
+      default: 20,
+    },
+    storageLimitMB: {
+      type: Number,
+      default: 2000,
+    },
+    automationRunsUsedThisPeriod: {
+      type: Number,
+      default: 0,
+    },
+    aiCallsUsedThisPeriod: {
+      type: Number,
+      default: 0,
+    },
+    storageUsedMB: {
+      type: Number,
+      default: 0,
     },
   },
   { timestamps: true }
