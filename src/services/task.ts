@@ -35,11 +35,33 @@ interface CreateTaskInput {
   customFields?: Record<string, unknown>;
 }
 
-async function resolveOrCreateDefaultProject(workspaceId: string): Promise<{ id: string; key: string }> {
+async function resolveOrCreateDefaultProject(
+  workspaceId: string
+): Promise<{ id: string; key: string; boards?: { id: string; columns: { id: string; position: number; name: string }[] }[] }> {
   const existing = await prisma.project.findFirst({
-    where: { workspaceId, name: "Default" },
+    where: { workspaceId },
+    orderBy: { createdAt: "desc" },
+    include: {
+      boards: {
+        include: { columns: { orderBy: { position: "asc" } } },
+        orderBy: { createdAt: "asc" },
+      },
+    },
   });
-  if (existing) return { id: existing.id, key: existing.key };
+  if (existing && existing.boards.length > 0) return existing;
+
+  const withBoard = await prisma.project.findFirst({
+    where: { workspaceId, boards: { some: {} } },
+    orderBy: { createdAt: "desc" },
+    include: {
+      boards: {
+        include: { columns: { orderBy: { position: "asc" } } },
+        orderBy: { createdAt: "asc" },
+      },
+    },
+  });
+  if (withBoard) return withBoard;
+  if (existing) return existing;
 
   const workspace = await prisma.workspace.findUnique({ where: { id: workspaceId } });
   if (!workspace) throw new AppError("Workspace not found", 404);
@@ -51,15 +73,31 @@ async function resolveOrCreateDefaultProject(workspaceId: string): Promise<{ id:
 
   const project = await prisma.project.create({
     data: {
-      name: "Default",
+      name: workspace.name || "Default",
       key: prefix,
       description: "Auto-created default project",
       workspaceId,
-      ownerId: "",
+      ownerId: workspace.ownerId || "",
+      template: workspace.template || "KANBAN",
+      isTeamManaged: true,
     },
   });
 
-  return { id: project.id, key: project.key };
+  const defaultColumns = ["To Do", "In Progress", "Done"];
+
+  const board = await prisma.board.create({
+    data: {
+      name: `${project.name} Board`,
+      type: (workspace.template === "SCRUM" ? "SCRUM" : "KANBAN") as "SCRUM" | "KANBAN",
+      projectId: project.id,
+      columns: {
+        create: defaultColumns.map((name, i) => ({ name, position: i })),
+      },
+    },
+    include: { columns: { orderBy: { position: "asc" } } },
+  });
+
+  return { id: project.id, key: project.key, boards: [board] };
 }
 
 export async function generateTaskKey(projectId: string): Promise<string> {
@@ -80,13 +118,29 @@ export async function generateTaskKey(projectId: string): Promise<string> {
 
 export async function createTask(input: CreateTaskInput) {
   let projectId = input.projectId;
+  let defaultProject: { id: string; key: string; boards?: { id: string; columns: { id: string; position: number; name: string }[] }[] } | null = null;
   if (!projectId) {
-    const defaultProject = await resolveOrCreateDefaultProject(input.workspaceId);
+    defaultProject = await resolveOrCreateDefaultProject(input.workspaceId);
     projectId = defaultProject.id;
   }
 
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) throw new AppError("Project not found", 404);
+
+  let boardId = input.boardId || null;
+  let columnId = input.columnId || null;
+  if (!boardId && (defaultProject?.boards?.length || projectId)) {
+    const firstBoard = defaultProject?.boards?.[0] || (await prisma.board.findFirst({
+      where: { projectId },
+      include: { columns: { orderBy: { position: "asc" } } },
+      orderBy: { createdAt: "asc" },
+    }));
+    if (firstBoard) {
+      boardId = firstBoard.id;
+      const firstColumn = firstBoard.columns.sort((a, b) => a.position - b.position)[0];
+      columnId = columnId || firstColumn?.id || null;
+    }
+  }
 
   if (project.enabledIssueTypes && project.enabledIssueTypes.length > 0) {
     const requestedType = input.type || "task";
@@ -100,8 +154,8 @@ export async function createTask(input: CreateTaskInput) {
 
   const taskKey = await generateTaskKey(projectId);
 
-  const maxPosition = input.columnId
-    ? await Task.countDocuments({ columnId: input.columnId })
+  const maxPosition = columnId
+    ? await Task.countDocuments({ columnId })
     : 0;
 
   const task = await Task.create({
@@ -114,8 +168,8 @@ export async function createTask(input: CreateTaskInput) {
     assignee: input.assignee || null,
     reporter: input.reporter,
     projectId,
-    boardId: input.boardId || null,
-    columnId: input.columnId || null,
+    boardId,
+    columnId,
     position: maxPosition,
     labels: input.labels || [],
     components: input.components || [],
