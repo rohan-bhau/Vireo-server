@@ -32,12 +32,12 @@ export const config = {
     proPriceId: process.env.STRIPE_PRO_PRICE_ID || "",
     enterprisePriceId: process.env.STRIPE_ENTERPRISE_PRICE_ID || "",
   },
-  oauth: {
+oauth: {
     googleClientId: process.env.GOOGLE_CLIENT_ID || "",
     googleClientSecret: process.env.GOOGLE_CLIENT_SECRET || "",
     githubClientId: process.env.GITHUB_CLIENT_ID || "",
     githubClientSecret: process.env.GITHUB_CLIENT_SECRET || "",
-  },
+},
   cloudinary: {
     cloudName: process.env.CLOUDINARY_CLOUD_NAME || "",
     apiKey: process.env.CLOUDINARY_API_KEY || "",
