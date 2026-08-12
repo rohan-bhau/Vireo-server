@@ -13,7 +13,6 @@ import Dashboard from "../models/mongoose/Dashboard";
 import SavedFilter from "../models/mongoose/SavedFilter";
 import Subscription from "../models/mongoose/Subscription";
 import Notification from "../models/mongoose/Notification";
-import Conversation from "../models/mongoose/Conversation";
 import { getIO } from "../socket";
 import { notifyMemberAdded, notifyRoleChanged } from "./notification";
 import * as projectService from "./project";
@@ -260,9 +259,6 @@ export async function deleteWorkspace(workspaceId: string, userId?: string) {
     await Task.find({ workspaceId }).select("taskKey")
   ).map((t) => t.taskKey);
 
-  const conversations = await Conversation.find({ workspaceId }).select("_id");
-  const conversationIds = conversations.map((c) => c._id.toString());
-
   await Promise.all([
     Task.deleteMany({ workspaceId }),
     Comment.deleteMany({ taskId: { $in: taskKeys } }),
@@ -281,10 +277,6 @@ export async function deleteWorkspace(workspaceId: string, userId?: string) {
         { projectId: { $in: projectIds } },
       ],
     }),
-    Conversation.deleteMany({ workspaceId }),
-    import("../models/mongoose/Message").then(({ default: Message }) =>
-      Message.deleteMany({ conversationId: { $in: conversationIds } })
-    ),
     import("../models/mongoose/ProjectRole").then(({ default: ProjectRole }) =>
       ProjectRole.deleteMany({ workspaceId })
     ),
