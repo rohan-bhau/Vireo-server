@@ -1,0 +1,5 @@
+<svg width="240" height="70" viewBox="0 0 240 70" xmlns="http://www.w3.org/2000/svg">
+  <path d="M18,38 C25,20 40,20 50,32" fill="none" stroke="#185FA5" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M50,32 C60,20 75,20 82,38" fill="none" stroke="#185FA5" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="100" y="46" font-family="Helvetica, Arial, sans-serif" font-size="34" font-weight="700" fill="#0C2A43">Vireo</text>
+</svg>
