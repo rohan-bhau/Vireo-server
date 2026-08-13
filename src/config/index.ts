@@ -29,8 +29,6 @@ export const config = {
     secretKey: process.env.MAILJET_SECRET_KEY || "",
   },
   brevoApiKey: process.env.BREVO_API_KEY || "",
-  brevoSenderEmail: process.env.BREVO_SENDER_EMAIL || process.env.EMAIL_FROM || "noreply@vireo.app",
-  brevoSenderName: process.env.BREVO_SENDER_NAME || "Vireo",
   clientUrl: process.env.CLIENT_URL || "http://localhost:3000",
   oauthRedirectUrl:
     process.env.OAUTH_REDIRECT_URL || process.env.CLIENT_URL || "http://localhost:3000",

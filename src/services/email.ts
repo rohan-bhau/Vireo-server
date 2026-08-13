@@ -74,7 +74,7 @@ async function sendViaBrevo(to: string, subject: string, html: string): Promise<
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      sender: { email: config.brevoSenderEmail, name: config.brevoSenderName },
+      sender: { email: config.emailFrom, name: "Vireo" },
       to: [{ email: to }],
       subject,
       htmlContent: html,
