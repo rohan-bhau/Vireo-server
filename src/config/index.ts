@@ -18,6 +18,7 @@ export const config = {
     user: process.env.SMTP_USER || "",
     pass: process.env.SMTP_PASS || "",
   },
+  otpDebug: process.env.ALLOW_OTP_DEBUG === "true",
   emailFrom: process.env.EMAIL_FROM || "noreply@vireo.app",
   resendApiKey: process.env.RESEND_API_KEY || "",
   sendgridApiKey: process.env.SENDGRID_API_KEY || "",

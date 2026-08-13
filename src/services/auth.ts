@@ -32,6 +32,7 @@ export async function registerUser(
   return {
     message: "Verification code sent to email",
     email: user.email,
+    ...(config.otpDebug ? { otp } : {}),
   };
 }
 
@@ -52,7 +53,7 @@ export async function resendOtp(email: string) {
 
   await sendOtpEmail(user.email, user.name, otp);
 
-  return { message: "New verification code sent to email" };
+  return { message: "New verification code sent to email", ...(config.otpDebug ? { otp } : {}) };
 }
 
 export async function verifyEmail(email: string, code: string) {
