@@ -3,7 +3,7 @@ import { prisma } from "../config/prisma";
 import { AppError } from "../utils/AppError";
 import User from "../models/mongoose/User";
 import { sendInvitationEmail, sendWelcomeEmail } from "./email";
-import { notifyMemberAdded } from "./notification";
+import { notifyMemberAdded, notifyInvitationSent, notifyInvitationAccepted } from "./notification";
 import { assertMemberLimitAllowed, getMemberLimitStatus } from "./billing";
 import { getIO } from "../socket";
 
@@ -95,7 +95,23 @@ export async function createInvitation(input: CreateInvitationInput) {
     console.error("Failed to send invitation email:", error);
   }
 
+  const inviteeAccount = await User.findOne({
+    email: { $regex: new RegExp(`^${escapeRegex(input.inviteeEmail.trim())}$`, "i") },
+  });
+  if (inviteeAccount && inviteeAccount._id.toString() !== input.inviterId) {
+    await notifyInvitationSent(
+      inviteeAccount._id.toString(),
+      input.inviterId,
+      input.workspaceId,
+      workspace.name
+    );
+  }
+
   return invitation;
+}
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 export async function resendInvitation(invitationId: string, inviterId: string) {
@@ -222,6 +238,12 @@ export async function acceptInvitation(token: string, userId: string) {
   });
   if (workspace) {
     await notifyMemberAdded(userId, invitation.inviterId, invitation.workspaceId, workspace.name);
+    await notifyInvitationAccepted(
+      invitation.inviterId,
+      userId,
+      invitation.workspaceId,
+      workspace.name
+    );
   }
 
   const io = getIO();

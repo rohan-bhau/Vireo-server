@@ -354,6 +354,40 @@ export async function notifyMemberAdded(
   );
 }
 
+export async function notifyInvitationSent(
+  targetUserId: string,
+  actorId: string,
+  workspaceId: string,
+  workspaceName: string
+) {
+  await dispatchNotification(
+    targetUserId,
+    "invited",
+    undefined,
+    workspaceName,
+    actorId,
+    `invited you to join the ${workspaceName} workspace`,
+    { workspaceId, sendEmail: false }
+  );
+}
+
+export async function notifyInvitationAccepted(
+  inviterId: string,
+  actorId: string,
+  workspaceId: string,
+  workspaceName: string
+) {
+  await dispatchNotification(
+    inviterId,
+    "member_added",
+    undefined,
+    workspaceName,
+    actorId,
+    `accepted your invitation to the ${workspaceName} workspace`,
+    { workspaceId, sendEmail: true }
+  );
+}
+
 export async function notifyRoleChanged(
   targetUserId: string,
   actorId: string,
