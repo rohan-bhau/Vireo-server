@@ -20,6 +20,7 @@ export const config = {
   },
   emailFrom: process.env.EMAIL_FROM || "noreply@vireo.app",
   resendApiKey: process.env.RESEND_API_KEY || "",
+  sendgridApiKey: process.env.SENDGRID_API_KEY || "",
   clientUrl: process.env.CLIENT_URL || "http://localhost:3000",
   oauthRedirectUrl:
     process.env.OAUTH_REDIRECT_URL || process.env.CLIENT_URL || "http://localhost:3000",

@@ -3,6 +3,27 @@ import path from "path";
 import { getTransporter, sender } from "../config/email";
 import { config } from "../config";
 
+async function sendViaSendGrid(to: string, subject: string, html: string): Promise<void> {
+  const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.sendgridApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      personalizations: [{ to: [{ email: to }] }],
+      from: { email: config.emailFrom, name: "Vireo" },
+      subject,
+      content: [{ type: "text/html", value: html }],
+    }),
+  });
+
+  if (response.status !== 202) {
+    const body = await response.text();
+    throw new Error(`SendGrid ${response.status}: ${body.slice(0, 200)}`);
+  }
+}
+
 async function sendViaResend(to: string, subject: string, html: string): Promise<void> {
   const usesFreeMailbox = /@(gmail|yahoo|outlook|hotmail|icloud|aol)\./i.test(config.emailFrom);
   const from = usesFreeMailbox
@@ -30,6 +51,18 @@ async function trySend(
   html: string,
   label: string
 ): Promise<void> {
+  if (config.sendgridApiKey) {
+    try {
+      await sendViaSendGrid(to, subject, html);
+      console.log(`[Email] Sent ${label} to ${to} via SendGrid`);
+      return;
+    } catch (error) {
+      console.error(
+        `[Email] SendGrid failed for ${label} to ${to}:`,
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
   if (config.resendApiKey) {
     try {
       await sendViaResend(to, subject, html);
