@@ -5,6 +5,7 @@ import User from "../models/mongoose/User";
 import { sendInvitationEmail, sendWelcomeEmail } from "./email";
 import { notifyMemberAdded } from "./notification";
 import { assertMemberLimitAllowed, getMemberLimitStatus } from "./billing";
+import { getIO } from "../socket";
 
 interface CreateInvitationInput {
   workspaceId: string;
@@ -107,9 +108,17 @@ export async function resendInvitation(invitationId: string, inviterId: string) 
     throw new AppError("Invitation not found", 404);
   }
 
-  if (invitation.status !== "PENDING") {
-    throw new AppError("Invitation is no longer pending", 400);
+  if (invitation.status === "ACCEPTED" || invitation.status === "DECLINED") {
+    throw new AppError("Invitation is no longer active", 400);
   }
+
+  const token = uuidv4();
+  const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+  await prisma.invitation.update({
+    where: { id: invitation.id },
+    data: { status: "PENDING", token, expiresAt },
+  });
 
   const inviter = await User.findById(inviterId).select("name");
   const inviterName = inviter?.name || "A team member";
@@ -119,7 +128,7 @@ export async function resendInvitation(invitationId: string, inviterId: string) 
       invitation.inviteeEmail,
       invitation.workspace.name,
       inviterName,
-      invitation.token,
+      token,
       invitation.message || undefined
     );
   } catch (error) {
@@ -129,6 +138,15 @@ export async function resendInvitation(invitationId: string, inviterId: string) 
 }
 
 export async function getWorkspaceInvitations(workspaceId: string) {
+  await prisma.invitation.updateMany({
+    where: {
+      workspaceId,
+      status: "PENDING",
+      expiresAt: { lt: new Date() },
+    },
+    data: { status: "EXPIRED" },
+  });
+
   const invitations = await prisma.invitation.findMany({
     where: { workspaceId },
     orderBy: { createdAt: "desc" },
@@ -204,6 +222,15 @@ export async function acceptInvitation(token: string, userId: string) {
   });
   if (workspace) {
     await notifyMemberAdded(userId, invitation.inviterId, invitation.workspaceId, workspace.name);
+  }
+
+  const io = getIO();
+  if (io) {
+    io.to(`workspace:${invitation.workspaceId}`).emit("member-added", {
+      workspaceId: invitation.workspaceId,
+      memberId: userId,
+      inviterId: invitation.inviterId,
+    });
   }
 }
 

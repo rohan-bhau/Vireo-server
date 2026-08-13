@@ -302,7 +302,10 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
   }
 
   if (input.assignee !== undefined && input.assignee !== oldAssignee && input.assignee) {
-    await notifyAssigned(taskKey, task.title, input.assignee, actorId);
+    await notifyAssigned(taskKey, task.title, input.assignee, actorId, {
+      projectId: task.projectId,
+      workspaceId: task.workspaceId,
+    });
   }
   if (input.status !== undefined && input.status !== oldStatus) {
     await notifyStatusChanged(taskKey, task.title, input.status, task.assignee, actorId);

@@ -87,6 +87,12 @@ router.delete(
   requireWorkspaceRole("ADMIN"),
   invitationController.cancel
 );
+router.post(
+  "/:workspaceId/invitations/resend/:invitationId",
+  requireWorkspaceMember,
+  requireWorkspaceRole("ADMIN"),
+  invitationController.resend
+);
 
 router.get(
   "/:workspaceId/custom-fields",
