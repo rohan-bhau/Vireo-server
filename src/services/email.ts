@@ -3,6 +3,22 @@ import path from "path";
 import { getTransporter, sender } from "../config/email";
 import { config } from "../config";
 
+async function sendViaRelay(to: string, subject: string, html: string): Promise<void> {
+  const response = await fetch(config.emailRelayUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-email-secret": config.emailRelaySecret,
+    },
+    body: JSON.stringify({ to, subject, html }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Relay ${response.status}: ${body.slice(0, 200)}`);
+  }
+}
+
 async function sendViaSendGrid(to: string, subject: string, html: string): Promise<void> {
   const response = await fetch("https://api.sendgrid.com/v3/mail/send", {
     method: "POST",
@@ -98,6 +114,18 @@ async function trySend(
   html: string,
   label: string
 ): Promise<void> {
+  if (config.emailRelayUrl && config.emailRelaySecret) {
+    try {
+      await sendViaRelay(to, subject, html);
+      console.log(`[Email] Sent ${label} to ${to} via Vercel relay`);
+      return;
+    } catch (error) {
+      console.error(
+        `[Email] Relay failed for ${label} to ${to}:`,
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
   if (config.sendgridApiKey) {
     try {
       await sendViaSendGrid(to, subject, html);
