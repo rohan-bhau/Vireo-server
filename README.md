@@ -154,6 +154,7 @@ Copy the structure from `.env.example` into a new `.env` file and fill in real v
 | `JWT_ACCESS_EXPIRES_IN`      | Access-token lifetime                       | `15d`                                   |
 | `JWT_REFRESH_EXPIRES_IN`     | Refresh-token lifetime                      | `30d`                                   |
 | `CLIENT_URL`                 | Allowed CORS origin (the frontend)          | `http://localhost:3000`                 |
+| `OAUTH_REDIRECT_URL`         | Public base URL that OAuth redirects land on (the API host) | `http://localhost:5000` |
 | `SMTP_HOST`                  | SMTP host for email                         | `smtp.gmail.com`                        |
 | `SMTP_PORT`                  | SMTP port                                   | `587`                                   |
 | `SMTP_USER`                  | SMTP username                               | `you@example.com`                       |

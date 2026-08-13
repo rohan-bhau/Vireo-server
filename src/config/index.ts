@@ -20,6 +20,8 @@ export const config = {
   },
   emailFrom: process.env.EMAIL_FROM || "noreply@vireo.app",
   clientUrl: process.env.CLIENT_URL || "http://localhost:3000",
+  oauthRedirectUrl:
+    process.env.OAUTH_REDIRECT_URL || process.env.CLIENT_URL || "http://localhost:3000",
   llm: {
     apiKey: process.env.LLM_API_KEY || "",
     apiUrl: process.env.LLM_API_URL || "https://api.openai.com/v1",

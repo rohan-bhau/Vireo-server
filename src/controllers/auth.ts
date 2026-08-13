@@ -151,10 +151,10 @@ export async function oauthRedirect(
   try {
     const { provider } = req.params;
     if (provider === "google") {
-      const redirectUri = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${config.oauth.googleClientId}&redirect_uri=${config.clientUrl}/api/auth/google/callback&response_type=code&scope=email%20profile`;
+      const redirectUri = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${config.oauth.googleClientId}&redirect_uri=${config.oauthRedirectUrl}/api/auth/google/callback&response_type=code&scope=email%20profile`;
       res.redirect(redirectUri);
     } else if (provider === "github") {
-      const redirectUri = `https://github.com/login/oauth/authorize?client_id=${config.oauth.githubClientId}&redirect_uri=${config.clientUrl}/api/auth/github/callback&scope=user:email`;
+      const redirectUri = `https://github.com/login/oauth/authorize?client_id=${config.oauth.githubClientId}&redirect_uri=${config.oauthRedirectUrl}/api/auth/github/callback&scope=user:email`;
       res.redirect(redirectUri);
     } else {
       res.status(400).json({ status: "error", message: `Unsupported provider: ${provider}` });

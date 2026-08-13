@@ -281,7 +281,7 @@ export async function handleOAuthLogin(provider: string, code: string) {
         code,
         client_id: config.oauth.googleClientId,
         client_secret: config.oauth.googleClientSecret,
-        redirect_uri: `${config.clientUrl}/api/auth/google/callback`,
+        redirect_uri: `${config.oauthRedirectUrl}/api/auth/google/callback`,
         grant_type: "authorization_code",
       }),
     });
