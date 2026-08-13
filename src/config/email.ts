@@ -1,33 +1,56 @@
+import dns from "dns";
+import net from "net";
 import nodemailer from "nodemailer";
 import { config } from "./index";
 
-let transporter: nodemailer.Transporter | null = null;
+let transporterPromise: Promise<nodemailer.Transporter> | null = null;
 
-export function getTransporter(): nodemailer.Transporter {
-  if (transporter) return transporter;
+async function resolveIPv4(
+  host: string
+): Promise<{ host: string; servername?: string }> {
+  if (net.isIP(host)) {
+    return { host };
+  }
+  try {
+    const addresses = await dns.promises.resolve4(host);
+    if (addresses.length === 0) {
+      return { host };
+    }
+    return { host: addresses[0], servername: host };
+  } catch {
+    return { host };
+  }
+}
 
-  if (config.smtp.host && config.smtp.user) {
-    const smtpOptions = {
-      host: config.smtp.host,
-      port: config.smtp.port,
-      secure: config.smtp.port === 465,
-      family: 4,
-      auth: {
-        user: config.smtp.user,
-        pass: config.smtp.pass,
-      },
-      requireTLS: true,
-    };
-    transporter = nodemailer.createTransport(smtpOptions);
-  } else {
-    transporter = nodemailer.createTransport({
+export function getTransporter(): Promise<nodemailer.Transporter> {
+  if (transporterPromise) {
+    return transporterPromise;
+  }
+
+  transporterPromise = (async () => {
+    if (config.smtp.host && config.smtp.user) {
+      const { host, servername } = await resolveIPv4(config.smtp.host);
+      const smtpOptions = {
+        host,
+        port: config.smtp.port,
+        secure: config.smtp.port === 465,
+        auth: {
+          user: config.smtp.user,
+          pass: config.smtp.pass,
+        },
+        requireTLS: true,
+        ...(servername ? { tls: { servername } } : {}),
+      };
+      return nodemailer.createTransport(smtpOptions);
+    }
+    return nodemailer.createTransport({
       host: "localhost",
       port: 1025,
       ignoreTLS: true,
     });
-  }
+  })();
 
-  return transporter;
+  return transporterPromise;
 }
 
 export const sender = {

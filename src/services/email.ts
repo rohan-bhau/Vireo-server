@@ -3,6 +3,23 @@ import path from "path";
 import { getTransporter, sender } from "../config/email";
 import { config } from "../config";
 
+async function trySend(
+  to: string,
+  subject: string,
+  html: string,
+  label: string
+): Promise<void> {
+  try {
+    const transporter = await getTransporter();
+    await transporter.sendMail({ from: sender, to, subject, html });
+  } catch (error) {
+    console.error(
+      `[Email] Failed to send ${label} to ${to}:`,
+      error instanceof Error ? error.message : error
+    );
+  }
+}
+
 function loadTemplate(name: string): string {
   const filePath = path.join(__dirname, "..", "emails", name);
   return fs.readFileSync(filePath, "utf-8");
@@ -43,13 +60,7 @@ export async function sendInvitationEmail(
     message,
   });
 
-  const transporter = getTransporter();
-  await transporter.sendMail({
-    from: sender,
-    to,
-    subject: `You're invited to ${workspaceName} on Vireo`,
-    html,
-  });
+  await trySend(to, `You're invited to ${workspaceName} on Vireo`, html, "invitation email");
 }
 
 export async function sendWelcomeEmail(to: string, name: string) {
@@ -61,13 +72,7 @@ export async function sendWelcomeEmail(to: string, name: string) {
     dashboardUrl,
   });
 
-  const transporter = getTransporter();
-  await transporter.sendMail({
-    from: sender,
-    to,
-    subject: "Welcome to Vireo!",
-    html,
-  });
+  await trySend(to, "Welcome to Vireo!", html, "welcome email");
 }
 
 export async function sendPasswordResetEmail(to: string, name: string, resetToken: string) {
@@ -80,13 +85,7 @@ export async function sendPasswordResetEmail(to: string, name: string, resetToke
     resetUrl,
   });
 
-  const transporter = getTransporter();
-  await transporter.sendMail({
-    from: sender,
-    to,
-    subject: "Reset your Vireo password",
-    html,
-  });
+  await trySend(to, "Reset your Vireo password", html, "password reset email");
 }
 
 export async function sendOtpEmail(to: string, name: string, otp: string) {
@@ -97,13 +96,7 @@ export async function sendOtpEmail(to: string, name: string, otp: string) {
     name,
   });
 
-  const transporter = getTransporter();
-  await transporter.sendMail({
-    from: sender,
-    to,
-    subject: "Your Vireo verification code",
-    html,
-  });
+  await trySend(to, "Your Vireo verification code", html, "OTP email");
 }
 
 export async function sendNotificationEmail(
@@ -135,11 +128,6 @@ export async function sendNotificationEmail(
     typeLabel: data.type.replace(/_/g, " ").replace(/\b\w/g, (l) => l.toUpperCase()),
   });
 
-  const transporter = getTransporter();
-  await transporter.sendMail({
-    from: sender,
-    to,
-    subject: data.taskId ? `[${data.taskId}] ${data.message}` : data.message,
-    html,
-  });
+  const subject = data.taskId ? `[${data.taskId}] ${data.message}` : data.message;
+  await trySend(to, subject, html, "notification email");
 }
