@@ -3,18 +3,52 @@ import path from "path";
 import { getTransporter, sender } from "../config/email";
 import { config } from "../config";
 
+async function sendViaResend(to: string, subject: string, html: string): Promise<void> {
+  const usesFreeMailbox = /@(gmail|yahoo|outlook|hotmail|icloud|aol)\./i.test(config.emailFrom);
+  const from = usesFreeMailbox
+    ? "Vireo <onboarding@resend.dev>"
+    : `${sender.name} <${config.emailFrom}>`;
+
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.resendApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ from, to, subject, html }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Resend ${response.status}: ${body.slice(0, 200)}`);
+  }
+}
+
 async function trySend(
   to: string,
   subject: string,
   html: string,
   label: string
 ): Promise<void> {
+  if (config.resendApiKey) {
+    try {
+      await sendViaResend(to, subject, html);
+      console.log(`[Email] Sent ${label} to ${to} via Resend`);
+      return;
+    } catch (error) {
+      console.error(
+        `[Email] Resend failed for ${label} to ${to}:`,
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
   try {
     const transporter = await getTransporter();
     await transporter.sendMail({ from: sender, to, subject, html });
+    console.log(`[Email] Sent ${label} to ${to} via SMTP`);
   } catch (error) {
     console.error(
-      `[Email] Failed to send ${label} to ${to}:`,
+      `[Email] SMTP failed for ${label} to ${to}:`,
       error instanceof Error ? error.message : error
     );
   }
