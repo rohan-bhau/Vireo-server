@@ -43,6 +43,9 @@ export function getTransporter(): Promise<nodemailer.Transporter> {
       };
       return nodemailer.createTransport(smtpOptions);
     }
+    console.warn(
+      "[Email] SMTP is NOT configured on this server (no SMTP_HOST/SMTP_USER/SMTP_PASS) — using a localhost:1025 dummy transporter. Emails will not be deliverable. Set the SMTP_* env vars (and EMAIL_FROM) in Render."
+    );
     return nodemailer.createTransport({
       host: "localhost",
       port: 1025,
