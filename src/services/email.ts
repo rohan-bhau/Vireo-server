@@ -24,6 +24,53 @@ async function sendViaSendGrid(to: string, subject: string, html: string): Promi
   }
 }
 
+async function sendViaMailjet(to: string, subject: string, html: string): Promise<void> {
+  const credentials = `${config.mailjet.apiKey}:${config.mailjet.secretKey}`;
+  const response = await fetch("https://api.mailjet.com/v3.1/send", {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${Buffer.from(credentials).toString("base64")}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      Messages: [
+        {
+          From: { Email: config.emailFrom, Name: "Vireo" },
+          To: [{ Email: to }],
+          Subject: subject,
+          HTMLPart: html,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Mailjet ${response.status}: ${body.slice(0, 200)}`);
+  }
+}
+
+async function sendViaBrevo(to: string, subject: string, html: string): Promise<void> {
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${config.brevoApiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      sender: { email: config.emailFrom, name: "Vireo" },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  });
+
+  if (response.status !== 201) {
+    const body = await response.text();
+    throw new Error(`Brevo ${response.status}: ${body.slice(0, 200)}`);
+  }
+}
+
 async function sendViaResend(to: string, subject: string, html: string): Promise<void> {
   const usesFreeMailbox = /@(gmail|yahoo|outlook|hotmail|icloud|aol)\./i.test(config.emailFrom);
   const from = usesFreeMailbox
@@ -59,6 +106,30 @@ async function trySend(
     } catch (error) {
       console.error(
         `[Email] SendGrid failed for ${label} to ${to}:`,
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
+  if (config.mailjet.apiKey) {
+    try {
+      await sendViaMailjet(to, subject, html);
+      console.log(`[Email] Sent ${label} to ${to} via Mailjet`);
+      return;
+    } catch (error) {
+      console.error(
+        `[Email] Mailjet failed for ${label} to ${to}:`,
+        error instanceof Error ? error.message : error
+      );
+    }
+  }
+  if (config.brevoApiKey) {
+    try {
+      await sendViaBrevo(to, subject, html);
+      console.log(`[Email] Sent ${label} to ${to} via Brevo`);
+      return;
+    } catch (error) {
+      console.error(
+        `[Email] Brevo failed for ${label} to ${to}:`,
         error instanceof Error ? error.message : error
       );
     }
