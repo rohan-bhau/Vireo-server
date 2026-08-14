@@ -305,6 +305,22 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
   }
   if (input.status !== undefined && input.status !== task.status) {
     changes.push({ field: "status", oldValue: task.status, newValue: input.status });
+    if (task.boardId) {
+      const columns = await prisma.column.findMany({
+        where: { boardId: task.boardId },
+        orderBy: { position: "asc" },
+      });
+      const currentColumn = task.columnId ? columns.find((c) => c.id === task.columnId) : null;
+      const matchesCurrent =
+        currentColumn && mapColumnToStatus(currentColumn.name) === input.status;
+      const target = matchesCurrent
+        ? currentColumn
+        : columns.find((c) => mapColumnToStatus(c.name) === input.status);
+      if (target && target.id !== task.columnId) {
+        task.columnId = target.id;
+        task.position = await Task.countDocuments({ columnId: target.id });
+      }
+    }
   }
   if (input.priority !== undefined && input.priority !== task.priority) {
     changes.push({ field: "priority", oldValue: task.priority, newValue: input.priority });
