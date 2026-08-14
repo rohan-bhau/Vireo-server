@@ -279,6 +279,19 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
     throw new AppError("You do not have permission to edit issues in this project", 403);
   }
 
+  if (!hasPerm) {
+    const allowedFields = ["status", "columnId", "position"];
+    const disallowedChanged = (Object.keys(input) as (keyof UpdateTaskInput)[])
+      .filter((k) => input[k] !== undefined)
+      .some((k) => !allowedFields.includes(k) && input[k] !== task[k as keyof typeof task]);
+    if (disallowedChanged) {
+      throw new AppError(
+        "View-only members can only change the status of issues assigned to them",
+        403
+      );
+    }
+  }
+
   const canAccess = await checkIssueSecurityAccess(actorId, task);
   if (!canAccess) throw new AppError("You do not have permission to access this issue", 403);
 
