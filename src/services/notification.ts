@@ -298,7 +298,11 @@ export async function notifyIssueCommented(
     watchers,
   });
 
-  for (const userId of recipients.userIds) {
+  const userIds = new Set(recipients.userIds);
+  if (reporter) userIds.add(reporter);
+
+  for (const userId of userIds) {
+    const isReporter = reporter && userId === reporter;
     await dispatchNotification(
       userId,
       "commented",
@@ -306,7 +310,7 @@ export async function notifyIssueCommented(
       taskTitle,
       actorId,
       `commented on ${taskId}`,
-      { projectId, workspaceId, sendEmail: recipients.sendEmail }
+      { projectId, workspaceId, sendEmail: recipients.sendEmail || !!isReporter }
     );
   }
 }

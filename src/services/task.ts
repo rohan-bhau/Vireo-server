@@ -313,7 +313,15 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
     changes.push({ field: "assignee", oldValue: task.assignee || "unassigned", newValue: input.assignee || "unassigned" });
   }
   if (input.columnId !== undefined && input.columnId !== task.columnId) {
-    changes.push({ field: "column", oldValue: task.columnId || "none", newValue: input.columnId || "none" });
+    const [oldCol, newCol] = await Promise.all([
+      task.columnId ? prisma.column.findUnique({ where: { id: task.columnId } }) : Promise.resolve(null),
+      input.columnId ? prisma.column.findUnique({ where: { id: input.columnId } }) : Promise.resolve(null),
+    ]);
+    changes.push({
+      field: "column",
+      oldValue: oldCol?.name || task.columnId || "none",
+      newValue: newCol?.name || input.columnId || "none",
+    });
   }
 
   if (input.assignee !== undefined && input.assignee !== oldAssignee && input.assignee) {
@@ -367,7 +375,7 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
   }
 
   for (const change of changes) {
-    const action = change.field === "status" ? "status_changed"
+    const action = change.field === "status" || change.field === "column" ? "status_changed"
       : change.field === "assignee" ? "assigned"
       : "updated";
 
@@ -499,13 +507,16 @@ export async function moveTask(taskKey: string, columnId: string, position: numb
   }
 
   if (oldColumnId !== columnId) {
+    const oldColumn = oldColumnId
+      ? await prisma.column.findUnique({ where: { id: oldColumnId } })
+      : null;
     await ActivityLog.create({
       taskId: taskKey,
       actorId,
       action: "status_changed",
       field: "column",
-      oldValue: oldColumnId || "none",
-      newValue: columnId,
+      oldValue: oldColumn?.name || "none",
+      newValue: column?.name || columnId,
       timestamp: new Date(),
     });
   }
