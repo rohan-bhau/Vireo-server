@@ -614,7 +614,24 @@ export async function unlinkTasks(taskKey: string, linkedTaskKey: string) {
 }
 
 export async function getTaskActivity(taskKey: string) {
-  return ActivityLog.find({ taskId: taskKey }).sort({ timestamp: -1 });
+  const activity = await ActivityLog.find({ taskId: taskKey }).sort({ timestamp: -1 });
+  const task = await Task.findOne({ taskKey }).select("boardId");
+  if (task?.boardId) {
+    const columns = await prisma.column.findMany({
+      where: { boardId: task.boardId },
+      select: { id: true, name: true },
+    });
+    const nameMap = new Map(columns.map((c) => [c.id, c.name]));
+    for (const item of activity) {
+      if (item.field === "column") {
+        const mappedOld = nameMap.get(item.oldValue || "");
+        const mappedNew = nameMap.get(item.newValue || "");
+        if (mappedOld) item.oldValue = mappedOld;
+        if (mappedNew) item.newValue = mappedNew;
+      }
+    }
+  }
+  return activity;
 }
 
 export async function reorderTasks(columnId: string, taskIds: string[]) {
