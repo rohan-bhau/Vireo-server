@@ -275,7 +275,9 @@ export async function updateTask(taskKey: string, input: UpdateTaskInput, actorI
   }
 
   const hasPerm = await checkProjectPermission(actorId, task.projectId, "EDIT_ISSUES");
-  if (!hasPerm) throw new AppError("You do not have permission to edit issues in this project", 403);
+  if (!hasPerm && task.assignee !== actorId) {
+    throw new AppError("You do not have permission to edit issues in this project", 403);
+  }
 
   const canAccess = await checkIssueSecurityAccess(actorId, task);
   if (!canAccess) throw new AppError("You do not have permission to access this issue", 403);
@@ -451,7 +453,9 @@ export async function moveTask(taskKey: string, columnId: string, position: numb
   if (!task) throw new AppError("Task not found", 404);
 
   const hasPerm = await checkProjectPermission(actorId, task.projectId, "MOVE_ISSUES");
-  if (!hasPerm) throw new AppError("You do not have permission to move issues in this project", 403);
+  if (!hasPerm && task.assignee !== actorId) {
+    throw new AppError("You do not have permission to move issues in this project", 403);
+  }
 
   const column = await prisma.column.findUnique({ where: { id: columnId } });
 
