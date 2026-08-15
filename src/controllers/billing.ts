@@ -5,6 +5,7 @@ import {
   getPlans,
   getUsageStats,
   createCheckoutSession,
+  confirmCheckoutSession,
   cancelSubscription,
   resumeSubscription,
   startTrial,
@@ -92,6 +93,25 @@ export async function createCheckoutSessionHandler(
       cancelUrl
     );
     res.json({ status: "success", data: result });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function confirmCheckoutHandler(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const workspaceId = getWorkspaceId(req);
+    const { sessionId } = req.body;
+    if (!sessionId) {
+      res.status(400).json({ status: "error", message: "sessionId is required" });
+      return;
+    }
+    const subscription = await confirmCheckoutSession(workspaceId, sessionId);
+    res.json({ status: "success", data: { subscription } });
   } catch (error) {
     next(error);
   }

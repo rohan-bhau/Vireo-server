@@ -8,6 +8,7 @@ import User from "../models/mongoose/User";
 import { config } from "../config";
 import { AppError } from "../utils/AppError";
 import { prisma } from "../config/prisma";
+import { getIO } from "../socket";
 import {
   PLAN_LIMITS,
   resolveLimits,
@@ -106,6 +107,16 @@ function getPlanConfig(planId: string): PlanConfig {
   return plan;
 }
 
+/**
+ * Pushes the latest subscription state to every connected workspace member so
+ * the billing page and plan-gated features update instantly after a change.
+ */
+export function emitSubscriptionUpdated(workspaceId: string) {
+  const io = getIO();
+  if (!io) return;
+  io.to(`workspace:${workspaceId}`).emit("subscription-updated", { workspaceId });
+}
+
 const TRIAL_DAYS = 14;
 const PERIOD_DAYS = 30;
 
@@ -159,6 +170,7 @@ async function syncStripeSubscriptionToDb(stripeSub: Stripe.Subscription) {
   }
 
   await sub.save();
+  emitSubscriptionUpdated(sub.workspaceId);
 }
 
 export function billingSettingsUrl(workspaceId: string): string {
@@ -603,6 +615,65 @@ export async function createCheckoutSession(
   return { url: session.url, sessionId: session.id };
 }
 
+/**
+ * Verifies a completed Stripe checkout session and applies the chosen plan to
+ * the workspace. This is a webhook-independent fallback: it guarantees the
+ * plan (and its feature unlocks) activate immediately on return from Stripe,
+ * even if the webhook is delayed or not configured.
+ */
+export async function confirmCheckoutSession(
+  workspaceId: string,
+  sessionId: string
+) {
+  if (!stripe) {
+    throw new AppError("Stripe is not configured", 500);
+  }
+
+  const session = await stripe.checkout.sessions.retrieve(sessionId, {
+    expand: ["subscription"],
+  });
+
+  if (session.metadata?.workspaceId !== workspaceId) {
+    throw new AppError("Checkout session does not belong to this workspace", 400);
+  }
+
+  const planId = session.metadata?.planId as "pro" | "enterprise" | undefined;
+  if (planId !== "pro" && planId !== "enterprise") {
+    throw new AppError("Invalid plan in checkout session", 400);
+  }
+
+  if (
+    session.payment_status !== "paid" &&
+    session.payment_status !== "no_payment_required"
+  ) {
+    throw new AppError("Payment has not completed for this session", 400);
+  }
+
+  const stripeSub = session.subscription;
+  const stripeSubId =
+    typeof stripeSub === "string" ? stripeSub : stripeSub?.id;
+
+  const subscription = await getSubscription(workspaceId);
+
+  let status: ISubscription["status"] = "active";
+  if (
+    typeof stripeSub === "object" &&
+    stripeSub?.status === "trialing"
+  ) {
+    status = "trialing";
+  }
+
+  subscription.stripeSubscriptionId = stripeSubId;
+  subscription.plan = planId;
+  subscription.status = status;
+  subscription.cancelAtPeriodEnd = false;
+  await subscription.save();
+
+  emitSubscriptionUpdated(workspaceId);
+
+  return subscription;
+}
+
 export async function cancelSubscription(workspaceId: string) {
   if (!stripe) {
     throw new AppError("Stripe is not configured", 500);
@@ -673,6 +744,7 @@ export async function handleStripeWebhook(
         subscription.status = "active";
         subscription.cancelAtPeriodEnd = false;
         await subscription.save();
+        emitSubscriptionUpdated(workspaceId);
       }
       break;
     }
@@ -700,6 +772,7 @@ export async function handleStripeWebhook(
         sub.stripeSubscriptionId = undefined;
         sub.cancelAtPeriodEnd = false;
         await sub.save();
+        emitSubscriptionUpdated(sub.workspaceId);
       }
       break;
     }
@@ -715,6 +788,7 @@ export async function handleStripeWebhook(
         if (sub) {
           sub.status = "active";
           await sub.save();
+          emitSubscriptionUpdated(sub.workspaceId);
         }
       }
       break;
@@ -731,6 +805,7 @@ export async function handleStripeWebhook(
         if (sub) {
           sub.status = "past_due";
           await sub.save();
+          emitSubscriptionUpdated(sub.workspaceId);
         }
       }
       break;
