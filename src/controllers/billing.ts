@@ -6,6 +6,7 @@ import {
   getUsageStats,
   createCheckoutSession,
   confirmCheckoutSession,
+  activateSubscriptionFromStripe,
   cancelSubscription,
   resumeSubscription,
   startTrial,
@@ -114,6 +115,21 @@ export async function confirmCheckoutHandler(
     res.json({ status: "success", data: { subscription } });
   } catch (error) {
     console.error("[billing] confirm-checkout failed:", error instanceof Error ? error.message : error);
+    next(error);
+  }
+}
+
+export async function activateSubscriptionHandler(
+  req: AuthRequest,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const workspaceId = getWorkspaceId(req);
+    const subscription = await activateSubscriptionFromStripe(workspaceId);
+    res.json({ status: "success", data: { subscription } });
+  } catch (error) {
+    console.error("[billing] activate-subscription failed:", error instanceof Error ? error.message : error);
     next(error);
   }
 }

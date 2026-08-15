@@ -7,6 +7,7 @@ import {
   getUsageStatsHandler,
   createCheckoutSessionHandler,
   confirmCheckoutHandler,
+  activateSubscriptionHandler,
   cancelSubscriptionHandler,
   resumeSubscriptionHandler,
   startTrialHandler,
@@ -46,6 +47,14 @@ router.post(
   requireWorkspaceMember,
   requireWorkspaceRole("ADMIN"),
   confirmCheckoutHandler
+);
+
+router.post(
+  "/:workspaceId/activate",
+  authenticate,
+  requireWorkspaceMember,
+  requireWorkspaceRole("ADMIN"),
+  activateSubscriptionHandler
 );
 
 router.post(

@@ -702,6 +702,61 @@ export async function cancelSubscription(workspaceId: string) {
   return subscription;
 }
 
+/**
+ * Recovers the workspace plan directly from Stripe by looking up the owner's
+ * customer subscriptions. Webhook-independent fallback used when the checkout
+ * session id is lost (e.g. sessionStorage cleared) but the user already paid.
+ */
+export async function activateSubscriptionFromStripe(workspaceId: string) {
+  if (!stripe) {
+    throw new AppError("Stripe is not configured", 500);
+  }
+
+  const subscription = await getSubscription(workspaceId);
+  if (subscription.plan !== "free" && subscription.stripeSubscriptionId) {
+    return subscription;
+  }
+
+  const workspace = await prisma.workspace.findUnique({
+    where: { id: workspaceId },
+  });
+  if (!workspace) {
+    throw new AppError("Workspace not found", 404);
+  }
+
+  const owner = await User.findById(workspace.ownerId);
+  if (!owner?.stripeCustomerId) {
+    throw new AppError("No Stripe customer found for this workspace", 400);
+  }
+
+  const stripeSubs = await stripe.subscriptions.list({
+    customer: owner.stripeCustomerId,
+    status: "all",
+    limit: 100,
+  });
+
+  const match = stripeSubs.data.find(
+    (s) =>
+      s.metadata?.workspaceId === workspaceId &&
+      (s.status === "active" || s.status === "trialing")
+  );
+  if (!match) {
+    throw new AppError("No active subscription found for this workspace", 400);
+  }
+
+  const planId =
+    (match.metadata?.planId as "pro" | "enterprise" | undefined) || "pro";
+  subscription.stripeSubscriptionId = match.id;
+  subscription.plan = planId;
+  subscription.status = match.status === "trialing" ? "trialing" : "active";
+  subscription.cancelAtPeriodEnd = match.cancel_at_period_end;
+  await subscription.save();
+
+  emitSubscriptionUpdated(workspaceId);
+
+  return subscription;
+}
+
 export async function resumeSubscription(workspaceId: string) {
   if (!stripe) {
     throw new AppError("Stripe is not configured", 500);
