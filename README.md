@@ -152,7 +152,7 @@ Copy the structure from `.env.example` into a new `.env` file and fill in real v
 | `JWT_ACCESS_SECRET`          | Access-token signing secret                 | `change-me-access-secret`               |
 | `JWT_REFRESH_SECRET`         | Refresh-token signing secret                | `change-me-refresh-secret`              |
 | `JWT_ACCESS_EXPIRES_IN`      | Access-token lifetime                       | `15d`                                   |
-| `JWT_REFRESH_EXPIRES_IN`     | Refresh-token lifetime                      | `30d`                                   |
+| `JWT_REFRESH_EXPIRES_IN`     | Refresh-token lifetime                      | `7d`                                   |
 | `CLIENT_URL`                 | Allowed CORS origin (the frontend)          | `http://localhost:3000`                 |
 | `OAUTH_REDIRECT_URL`         | Public base URL that OAuth redirects land on (the API host) | `http://localhost:5000` |
 | `SMTP_HOST`                  | SMTP host for email                         | `smtp.gmail.com`                        |
@@ -287,7 +287,7 @@ Known gaps and next steps, reflecting the current state of the repo:
 - [ ] **Automated tests** — no test framework is installed yet (verified via `npm run build`)
 - [ ] **Migration history** — the schema is synced with `prisma db push`; a `prisma migrate` workflow would add versioned migrations
 - [ ] **Production webhook secret** — `STRIPE_WEBHOOK_SECRET` must be set for billing events to sync
-- [ ] **Cleanup** — `.env.example` still lists legacy variables not read anywhere in the code (`RESEND_API_KEY`, `SLACK_WEBHOOK_URL`, `GITHUB_TOKEN`, `GITHUB_WEBHOOK_SECRET`)
+- [ ] **Cleanup** — `.env.example` still lists a few variables not read anywhere in the code (`SLACK_WEBHOOK_URL`, `GITHUB_TOKEN`, `GITHUB_WEBHOOK_SECRET`); the email provider keys (`RESEND_API_KEY`, `SENDGRID_API_KEY`, `MAILJET_*`, `BREVO_API_KEY`, `EMAIL_RELAY_*`) are live and consumed by `src/services/email.ts`
 
 ---
 
