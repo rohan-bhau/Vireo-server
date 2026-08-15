@@ -123,11 +123,17 @@ export async function getUserWorkspaces(userId: string) {
   const memberUserIds = Array.from(
     new Set(rows.map((r) => r.member_user_id as string))
   );
+  const ownerUserIds = Array.from(
+    new Set(rows.map((r) => r.ws_owner_id as string))
+  );
+  const allUserIds = Array.from(
+    new Set([...memberUserIds, ...ownerUserIds])
+  );
 
   let users: any[] = [];
-  if (memberUserIds.length > 0) {
+  if (allUserIds.length > 0) {
     users = await User.find({
-      _id: { $in: memberUserIds.map((id) => new mongoose.Types.ObjectId(id)) },
+      _id: { $in: allUserIds.map((id) => new mongoose.Types.ObjectId(id)) },
     }).select("name email avatar");
   }
   const userMap = new Map(users.map((u: any) => [u._id.toString(), u]));
@@ -144,6 +150,7 @@ export async function getUserWorkspaces(userId: string) {
       createdAt: Date;
       updatedAt: Date;
       members: any[];
+      owner: any;
     }
   >();
 
@@ -161,6 +168,7 @@ export async function getUserWorkspaces(userId: string) {
         createdAt: r.ws_created_at as Date,
         updatedAt: r.ws_updated_at as Date,
         members: [],
+        owner: userMap.get(r.ws_owner_id as string) || null,
       };
       byWorkspace.set(wsId, ws);
     }
