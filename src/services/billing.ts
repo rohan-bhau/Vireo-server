@@ -648,8 +648,7 @@ export async function confirmCheckoutSession(
   }
 
   if (
-    session.payment_status !== "paid" &&
-    session.payment_status !== "no_payment_required"
+    session.status !== "complete"
   ) {
     throw new AppError("Payment has not completed for this session", 400);
   }
@@ -664,6 +663,10 @@ export async function confirmCheckoutSession(
   if (
     typeof stripeSub === "object" &&
     stripeSub?.status === "trialing"
+  ) {
+    status = "trialing";
+  } else if (
+    session.payment_status === "no_payment_required"
   ) {
     status = "trialing";
   }
