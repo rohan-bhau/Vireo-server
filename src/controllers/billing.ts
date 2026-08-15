@@ -113,6 +113,7 @@ export async function confirmCheckoutHandler(
     const subscription = await confirmCheckoutSession(workspaceId, sessionId);
     res.json({ status: "success", data: { subscription } });
   } catch (error) {
+    console.error("[billing] confirm-checkout failed:", error instanceof Error ? error.message : error);
     next(error);
   }
 }

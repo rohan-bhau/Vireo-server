@@ -629,9 +629,14 @@ export async function confirmCheckoutSession(
     throw new AppError("Stripe is not configured", 500);
   }
 
-  const session = await stripe.checkout.sessions.retrieve(sessionId, {
-    expand: ["subscription"],
-  });
+  let session: Stripe.Checkout.Session;
+  try {
+    session = await stripe.checkout.sessions.retrieve(sessionId, {
+      expand: ["subscription"],
+    });
+  } catch {
+    throw new AppError("Could not verify the checkout session", 400);
+  }
 
   if (session.metadata?.workspaceId !== workspaceId) {
     throw new AppError("Checkout session does not belong to this workspace", 400);
