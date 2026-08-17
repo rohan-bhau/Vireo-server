@@ -297,7 +297,7 @@ Known gaps and next steps, reflecting the current state of the repo:
 
 ---
 
-## Author
+### Author
 
 **MD Rohan Mia** — Full-Stack Developer
 
